@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Time Capsule - Plant Your Future</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #11998e;
+            --success-light: #38ef7d;
+            --danger: #ff6b6b;
+            --warning: #ffd93d;
+            --light: #f8f9fa;
+            --dark: #333;
+            --gray: #666;
+            --gray-light: #e0e0e0;
+            --white: #ffffff;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.25);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--dark);
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 380px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 4px 0 30px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-380px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            padding: 30px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: headerGlow 15s linear infinite;
+        }
+
+        @keyframes headerGlow {
+            0% { transform: translate(-25%, -25%) rotate(0deg); }
+            100% { transform: translate(-25%, -25%) rotate(360deg); }
+        }
+
+        .header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 13px;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 15px 20px;
+            background: var(--light);
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            cursor: default;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.25);
+        }
+
+        .stat-item:hover::before {
+            left: 100%;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #444;
+        }
+
+        input[type="text"],
+        input[type="url"],
+        input[type="datetime-local"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--gray-light);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: var(--transition);
+            background: var(--white);
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+            transform: translateY(-1px);
+        }
+
+        input:hover:not(:focus),
+        textarea:hover:not(:focus),
+        select:hover:not(:focus) {
+            border-color: #b0b0b0;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .capsule-type {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .type-option {
+            padding: 12px;
+            border: 2px solid var(--gray-light);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--white);
+            font-weight: 600;
+            font-size: 13px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .type-option::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(102, 126, 234, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
+        }
+
+        .type-option:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .type-option:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .type-option.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            border-color: var(--primary);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .type-option span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+
+        .btn:hover::before {
+            width: 400px;
+            height: 400px;
+        }
+
+        .btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            margin-top: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            border-color: transparent;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Map Container */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Toggle Button */
+        .toggle-sidebar {
+            position: absolute;
+            left: 380px;
+            top: 20px;
+            z-index: 1001;
+            background: var(--white);
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 0 var(--radius) var(--radius) 0;
+            cursor: pointer;
+            box-shadow: 3px 3px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: var(--transition);
+        }
+
+        .toggle-sidebar:hover {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            transform: translateX(3px);
+            box-shadow: 4px 4px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .toggle-sidebar:active {
+            transform: translateX(1px);
+        }
+
+        .sidebar.collapsed + .toggle-sidebar {
+            left: 0;
+            border-radius: 0 var(--radius) var(--radius) 0;
+        }
+
+        .sidebar.collapsed + .toggle-sidebar:hover {
+            transform: translateX(3px);
+        }
+
+        /* Custom Marker Styles */
+        .capsule-marker {
+            background: transparent;
+            border: none;
+        }
+
+        .marker-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+            border: 3px solid var(--white);
+            animation: pulse 2s ease-in-out infinite;
+            transition: var(--transition);
+        }
+
+        .marker-icon:hover {
+            transform: scale(1.15);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .marker-locked {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            opacity: 0.7;
+        }
+
+        .marker-unlocked {
+            background: linear-gradient(135deg, var(--success) 0%, var(--success-light) 100%);
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+            }
+            50% { 
+                transform: scale(1.08);
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            }
+        }
+
+        /* Popup Styles */
+        .leaflet-popup-content-wrapper {
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(10px);
+        }
+
+        .leaflet-popup-tip {
+            box-shadow: 0 3px 14px rgba(0,0,0,0.1);
+        }
+
+        .popup-content {
+            padding: 5px;
+            max-width: 280px;
+        }
+
+        .popup-header {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .popup-message {
+            margin: 10px 0;
+            line-height: 1.5;
+            color: #444;
+        }
+
+        .popup-link {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            transition: var(--transition);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .popup-link:hover {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, #653a8a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .popup-footer {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
+            font-size: 11px;
+            color: #888;
+        }
+
+        .locked-message {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--primary);
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .filter-section {
+            padding: 15px 20px;
+            background: var(--light);
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .filter-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--gray);
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--gray-light);
+            background: var(--white);
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .instructions {
+            background: linear-gradient(135deg, #fff9e6 0%, #ffe6f0 100%);
+            padding: 18px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.7;
+            border-left: 5px solid var(--primary);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .instructions::before {
+            content: '💡';
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            font-size: 24px;
+            opacity: 0.3;
+        }
+
+        .instructions strong {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* Scrollbar Styling */
+        .content::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 10px;
+            border: 2px solid #f1f1f1;
+        }
+
+        .content::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, var(--primary-dark) 0%, #653a8a 100%);
+        }
+
+        /* Countdown Timer */
+        .countdown {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--primary);
+            text-align: center;
+            margin: 12px 0;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+        }
+
+        /* Animation for new markers */
+        @keyframes dropIn {
+            0% {
+                transform: translateY(-100px) scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: translateY(10px) scale(1.1);
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .drop-animation {
+            animation: dropIn 0.6s ease-out;
+        }
+
+        /* Advanced Features */
+        .search-container {
+            padding: 15px 20px;
+            background: var(--light);
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 40px 12px 15px;
+            border: 2px solid var(--gray-light);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+        }
+
+        .search-box i {
+            position: absolute;
+            right: 15px;
+            color: var(--gray);
+        }
+
+        .advanced-options {
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--light);
+            border-radius: var(--radius);
+            border-left: 4px solid var(--primary);
+        }
+
+        .advanced-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .advanced-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .advanced-content.expanded {
+            max-height: 300px;
+            margin-top: 15px;
+        }
+
+        .advanced-option {
+            margin-bottom: 10px;
+        }
+
+        .advanced-option label {
+            font-weight: 500;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .advanced-option input[type="checkbox"] {
+            width: auto;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 10000;
+            transform: translateX(150%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .notification.info {
+            border-left: 4px solid var(--primary);
+        }
+
+        .notification i {
+            font-size: 20px;
+        }
+
+        .notification.success i {
+            color: var(--success);
+        }
+
+        .notification.error i {
+            color: var(--danger);
+        }
+
+        .notification.info i {
+            color: var(--primary);
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .notification-message {
+            font-size: 13px;
+            color: var(--gray);
+        }
+
+        .close-notification {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: var(--gray);
+            transition: var(--transition);
+        }
+
+        .close-notification:hover {
+            color: var(--dark);
+        }
+
+        .capsule-details-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .capsule-details-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-content.show {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            border-radius: var(--radius) var(--radius) 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .close-modal:hover {
+            transform: scale(1.1);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .capsule-info {
+            margin-bottom: 15px;
+        }
+
+        .capsule-info-label {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--gray);
+            margin-bottom: 5px;
+        }
+
+        .capsule-info-value {
+            font-size: 15px;
+            color: var(--dark);
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid var(--gray-light);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .capsule-list {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .capsule-list-item {
+            padding: 12px;
+            border: 1px solid var(--gray-light);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .capsule-list-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .capsule-list-item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .capsule-list-item-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--dark);
+        }
+
+        .capsule-list-item-status {
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .capsule-list-item-status.locked {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary);
+        }
+
+        .capsule-list-item-status.unlocked {
+            background: rgba(17, 153, 142, 0.1);
+            color: var(--success);
+        }
+
+        .capsule-list-item-details {
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--white);
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            z-index: 1001;
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Dark theme */
+        body.dark-theme {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .sidebar {
+            background: rgba(44, 44, 52, 0.95);
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .stat-item {
+            background: #2c3e50;
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .content {
+            background: rgba(44, 44, 52, 0.95);
+        }
+
+        body.dark-theme input,
+        body.dark-theme textarea,
+        body.dark-theme select {
+            background: #2c3e50;
+            border-color: #34495e;
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .type-option {
+            background: #2c3e50;
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .btn-secondary {
+            background: #2c3e50;
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .instructions {
+            background: #34495e;
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .filter-section {
+            background: #2c3e50;
+        }
+
+        body.dark-theme .advanced-options {
+            background: #2c3e50;
+        }
+
+        body.dark-theme .capsule-list-item {
+            background: #2c3e50;
+            color: #ecf0f1;
+            border-color: #34495e;
+        }
+
+        body.dark-theme .modal-content {
+            background: #2c3e50;
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .modal-footer {
+            border-color: #34495e;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: 50vh;
+            }
+
+            .sidebar.collapsed {
+                transform: translateY(-100%);
+            }
+
+            .map-container {
+                height: 50vh;
+            }
+
+            .toggle-sidebar {
+                left: 20px;
+                top: auto;
+                bottom: 20px;
+                border-radius: var(--radius);
+            }
+
+            .sidebar.collapsed + .toggle-sidebar {
+                left: 20px;
+                border-radius: var(--radius);
+            }
+
+            .theme-toggle {
+                top: auto;
+                bottom: 20px;
+                right: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i>
+        </button>
+
+        <div class="sidebar" id="sidebar">
+            <div class="header">
+                <h1>⏰ Web Time Capsule</h1>
+                <p>Plant memories across time and space</p>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="totalCapsules">0</span>
+                    <span class="stat-label">Total</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="lockedCapsules">0</span>
+                    <span class="stat-label">Locked</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="unlockedCapsules">0</span>
+                    <span class="stat-label">Unlocked</span>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search capsules...">
+                    <i class="fas fa-search"></i>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-title">Filter View</div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="locked">Locked</button>
+                    <button class="filter-btn" data-filter="unlocked">Unlocked</button>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="instructions">
+                    <strong>How it works:</strong> Click anywhere on the map to plant your time capsule. It will remain locked until your chosen date, then reveal itself to the world! 🌍✨
+                </div>
+
+                <form id="capsuleForm">
+                    <div class="form-group">
+                        <label>Capsule Type</label>
+                        <div class="capsule-type">
+                            <div class="type-option active" data-type="note">📝 Note</div>
+                            <div class="type-option" data-type="link">🔗 Link</div>
+                            <div class="type-option" data-type="image">🖼️ Image</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="title">Title *</label>
+                        <input type="text" id="title" placeholder="Give your capsule a memorable title" required>
+                    </div>
+
+                    <div class="form-group" id="messageGroup">
+                        <label for="message">Message *</label>
+                        <textarea id="message" placeholder="Write your message to the future..." required></textarea>
+                    </div>
+
+                    <div class="form-group" id="linkGroup" style="display: none;">
+                        <label for="link">URL *</label>
+                        <input type="url" id="link" placeholder="https://example.com">
+                    </div>
+
+                    <div class="form-group" id="imageGroup" style="display: none;">
+                        <label for="image">Image URL</label>
+                        <input type="url" id="image" placeholder="https://example.com/image.jpg">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="author">Your Name (Optional)</label>
+                        <input type="text" id="author" placeholder="Anonymous">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="unlockDate">Unlock Date & Time *</label>
+                        <input type="datetime-local" id="unlockDate" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select id="category">
+                            <option value="personal">Personal Reflection</option>
+                            <option value="wisdom">Wisdom & Advice</option>
+                            <option value="memory">Memory</option>
+                            <option value="prediction">Prediction</option>
+                            <option value="greeting">Greeting</option>
+                            <option value="milestone">Milestone</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="advanced-options">
+                        <div class="advanced-toggle" id="advancedToggle">
+                            <span>Advanced Options</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="advanced-content" id="advancedContent">
+                            <div class="advanced-option">
+                                <label>
+                                    <input type="checkbox" id="publicCapsule">
+                                    Make this capsule public
+                                </label>
+                            </div>
+                            <div class="advanced-option">
+                                <label>
+                                    <input type="checkbox" id="notifyOnUnlock">
+                                    Notify me when unlocked
+                                </label>
+                            </div>
+                            <div class="advanced-option">
+                                <label for="password">Password Protect (Optional)</label>
+                                <input type="password" id="password" placeholder="Set a password">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                        📍 Plant Capsule (Click Map First)
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="clearBtn">
+                        Clear Selection
+                    </button>
+                </form>
+
+                <div class="capsule-list" id="capsuleList">
+                    <!-- Capsule list will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <button class="toggle-sidebar" id="toggleBtn">◀</button>
+
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <div class="notification-content">
+            <div class="notification-title" id="notificationTitle">Success</div>
+            <div class="notification-message" id="notificationMessage">Operation completed successfully</div>
+        </div>
+        <button class="close-notification" id="closeNotification">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <div class="capsule-details-modal" id="capsuleDetailsModal">
+        <div class="modal-content" id="modalContent">
+            <div class="modal-header">
+                <h3 id="modalTitle">Capsule Details</h3>
+                <button class="close-modal" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Modal content will be populated here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="closeModalBtn">Close</button>
+                <button class="btn btn-primary" id="shareCapsuleBtn" style="display: none;">Share</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Application State
+        const state = {
+            capsules: [],
+            selectedLocation: null,
+            selectedType: 'note',
+            currentFilter: 'all',
+            map: null,
+            markers: {},
+            tempMarker: null,
+            searchQuery: '',
+            isDarkTheme: false,
+            advancedOptionsOpen: false
+        };
+
+        // Initialize Map
+        function initMap() {
+            state.map = L.map('map').setView([20, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(state.map);
+
+            state.map.on('click', handleMapClick);
+            
+            // Add legend
+            const legend = L.control({ position: 'bottomright' });
+            legend.onAdd = function() {
+                const div = L.DomUtil.create('div', 'info legend');
+                div.innerHTML = `
+                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                        <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700;">Legend</h4>
+                        <div style="display: flex; align-items: center; margin: 5px 0;">
+                            <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-right: 8px; opacity: 0.7;"></div>
+                            <span style="font-size: 12px;">Locked</span>
+                        </div>
+                        <div style="display: flex; align-items: center; margin: 5px 0;">
+                            <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 50%; margin-right: 8px;"></div>
+                            <span style="font-size: 12px;">Unlocked</span>
+                        </div>
+                    </div>
+                `;
+                return div;
+            };
+            legend.addTo(state.map);
+        }
+
+        // Handle Map Click
+        function handleMapClick(e) {
+            state.selectedLocation = e.latlng;
+            
+            // Remove previous temp marker
+            if (state.tempMarker) {
+                state.map.removeLayer(state.tempMarker);
+            }
+            
+            // Add temporary marker
+            const icon = L.divIcon({
+                className: 'capsule-marker',
+                html: '<div class="marker-icon" style="background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%);">📍</div>',
+                iconSize: [40, 40]
+            });
+            
+            state.tempMarker = L.marker(e.latlng, { icon }).addTo(state.map);
+            state.tempMarker.bindPopup('📍 Click "Plant Capsule" to save here').openPopup();
+            
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = '📍 Plant Capsule Here';
+        }
+
+        // Handle Type Selection
+        document.querySelectorAll('.type-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.type-option').forEach(o => o.classList.remove('active'));
+                this.classList.add('active');
+                state.selectedType = this.dataset.type;
+                
+                const messageGroup = document.getElementById('messageGroup');
+                const linkGroup = document.getElementById('linkGroup');
+                const imageGroup = document.getElementById('imageGroup');
+                const messageInput = document.getElementById('message');
+                const linkInput = document.getElementById('link');
+                const imageInput = document.getElementById('image');
+                
+                if (state.selectedType === 'link') {
+                    messageGroup.style.display = 'none';
+                    linkGroup.style.display = 'block';
+                    imageGroup.style.display = 'none';
+                    messageInput.removeAttribute('required');
+                    linkInput.setAttribute('required', 'required');
+                    imageInput.removeAttribute('required');
+                } else if (state.selectedType === 'image') {
+                    messageGroup.style.display = 'none';
+                    linkGroup.style.display = 'none';
+                    imageGroup.style.display = 'block';
+                    messageInput.removeAttribute('required');
+                    linkInput.removeAttribute('required');
+                    imageInput.setAttribute('required', 'required');
+                } else {
+                    messageGroup.style.display = 'block';
+                    linkGroup.style.display = 'none';
+                    imageGroup.style.display = 'none';
+                    messageInput.setAttribute('required', 'required');
+                    linkInput.removeAttribute('required');
+                    imageInput.removeAttribute('required');
+                }
+            });
+        });
+
+        // Handle Form Submission
+        document.getElementById('capsuleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!state.selectedLocation) {
+                showNotification('Error', 'Please click on the map to select a location first!', 'error');
+                return;
+            }
+
+            const formData = {
+                id: Date.now(),
+                type: state.selectedType,
+                title: document.getElementById('title').value,
+                message: state.selectedType === 'note' ? document.getElementById('message').value : '',
+                link: state.selectedType === 'link' ? document.getElementById('link').value : '',
+                image: state.selectedType === 'image' ? document.getElementById('image').value : '',
+                author: document.getElementById('author').value || 'Anonymous',
+                unlockDate: new Date(document.getElementById('unlockDate').value),
+                category: document.getElementById('category').value,
+                location: state.selectedLocation,
+                createdAt: new Date(),
+                public: document.getElementById('publicCapsule').checked,
+                notifyOnUnlock: document.getElementById('notifyOnUnlock').checked,
+                password: document.getElementById('password').value || null
+            };
+
+            addCapsule(formData);
+            this.reset();
+            
+            // Reset advanced options
+            document.getElementById('publicCapsule').checked = false;
+            document.getElementById('notifyOnUnlock').checked = false;
+            document.getElementById('password').value = '';
+            
+            // Remove temp marker
+            if (state.tempMarker) {
+                state.map.removeLayer(state.tempMarker);
+                state.tempMarker = null;
+            }
+            
+            state.selectedLocation = null;
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = '📍 Plant Capsule (Click Map First)';
+            
+            showNotification('Success', 'Time capsule planted successfully!', 'success');
+        });
+
+        // Add Capsule
+        function addCapsule(capsule) {
+            state.capsules.push(capsule);
+            createMarker(capsule);
+            updateStats();
+            updateCapsuleList();
+            
+            // Save to localStorage
+            saveCapsulesToStorage();
+            
+            // Show success message
+            const marker = state.markers[capsule.id];
+            if (marker) {
+                marker.openPopup();
+            }
+        }
+
+        // Create Marker
+        function createMarker(capsule) {
+            const isUnlocked = new Date() >= capsule.unlockDate;
+            const iconClass = isUnlocked ? 'marker-unlocked' : 'marker-locked';
+            const emoji = isUnlocked ? '🎁' : '🔒';
+            
+            const icon = L.divIcon({
+                className: 'capsule-marker',
+                html: `<div class="marker-icon ${iconClass} drop-animation">${emoji}</div>`,
+                iconSize: [40, 40]
+            });
+            
+            const marker = L.marker(capsule.location, { icon }).addTo(state.map);
+            
+            marker.on('click', () => {
+                showPopup(capsule, marker);
+            });
+            
+            state.markers[capsule.id] = marker;
+            applyFilter(); // Apply current filter
+        }
+
+        // Show Popup
+        function showPopup(capsule, marker) {
+            const isUnlocked = new Date() >= capsule.unlockDate;
+            
+            let content = '<div class="popup-content">';
+            content += `<div class="popup-header">${isUnlocked ? '🎁' : '🔒'} ${capsule.title}</div>`;
+            
+            if (isUnlocked) {
+                if (capsule.type === 'note') {
+                    content += `<div class="popup-message">${capsule.message}</div>`;
+                } else if (capsule.type === 'link') {
+                    content += `<a href="${capsule.link}" target="_blank" class="popup-link">🔗 Visit Link</a>`;
+                } else if (capsule.type === 'image') {
+                    content += `<img src="${capsule.image}" style="width: 100%; border-radius: 8px; margin: 10px 0;" alt="Capsule image">`;
+                }
+                content += `<div class="popup-footer">
+                    <div>📁 ${capsule.category}</div>
+                    <div>✍️ ${capsule.author}</div>
+                    <div>🗓️ Created: ${capsule.createdAt.toLocaleDateString()}</div>
+                </div>`;
+            } else {
+                const timeLeft = getTimeUntilUnlock(capsule.unlockDate);
+                content += `<div class="locked-message">
+                    🔐 This capsule will unlock in:<br>
+                    <div class="countdown">${timeLeft}</div>
+                </div>`;
+                content += `<div class="popup-footer">
+                    <div>📁 ${capsule.category}</div>
+                    <div>✍️ ${capsule.author}</div>
+                    <div>🗓️ Unlocks: ${capsule.unlockDate.toLocaleString()}</div>
+                </div>`;
+            }
+            
+            content += '</div>';
+            
+            marker.bindPopup(content, {
+                maxWidth: 300,
+                className: 'custom-popup'
+            }).openPopup();
+        }
+
+        // Get Time Until Unlock
+        function getTimeUntilUnlock(unlockDate) {
+            const now = new Date();
+            const diff = unlockDate - now;
+            
+            if (diff <= 0) return 'Unlocked!';
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+            if (hours > 0) return `${hours}h ${minutes}m`;
+            return `${minutes}m`;
+        }
+
+        // Update Statistics
+        function updateStats() {
+            const now = new Date();
+            const locked = state.capsules.filter(c => now < c.unlockDate).length;
+            const unlocked = state.capsules.length - locked;
+            
+            document.getElementById('totalCapsules').textContent = state.capsules.length;
+            document.getElementById('lockedCapsules').textContent = locked;
+            document.getElementById('unlockedCapsules').textContent = unlocked;
+        }
+
+        // Filter Buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                state.currentFilter = this.dataset.filter;
+                applyFilter();
+                updateCapsuleList();
+            });
+        });
+
+        // Apply Filter
+        function applyFilter() {
+            const now = new Date();
+            
+            Object.entries(state.markers).forEach(([id, marker]) => {
+                const capsule = state.capsules.find(c => c.id == id);
+                if (!capsule) return;
+                
+                const isUnlocked = now >= capsule.unlockDate;
+                let show = true;
+                
+                if (state.currentFilter === 'locked' && isUnlocked) show = false;
+                if (state.currentFilter === 'unlocked' && !isUnlocked) show = false;
+                
+                // Apply search filter
+                if (state.searchQuery && !capsule.title.toLowerCase().includes(state.searchQuery.toLowerCase()) && 
+                    !capsule.message.toLowerCase().includes(state.searchQuery.toLowerCase())) {
+                    show = false;
+                }
+                
+                if (show) {
+                    if (!state.map.hasLayer(marker)) {
+                        marker.addTo(state.map);
+                    }
+                } else {
+                    if (state.map.hasLayer(marker)) {
+                        state.map.removeLayer(marker);
+                    }
+                }
+            });
+        }
+
+        // Sidebar Toggle
+        document.getElementById('toggleBtn').addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            this.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+        });
+
+        // Clear Button
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            if (state.tempMarker) {
+                state.map.removeLayer(state.tempMarker);
+                state.tempMarker = null;
+            }
+            state.selectedLocation = null;
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = '📍 Plant Capsule (Click Map First)';
+        });
+
+        // Set minimum date to now
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('unlockDate').min = now.toISOString().slice(0, 16);
+
+        // Auto-refresh unlocked capsules
+        setInterval(() => {
+            state.capsules.forEach(capsule => {
+                const wasLocked = new Date(Date.now() - 1000) < capsule.unlockDate;
+                const isUnlocked = new Date() >= capsule.unlockDate;
+                
+                if (wasLocked && isUnlocked) {
+                    // Capsule just unlocked - update marker
+                    const marker = state.markers[capsule.id];
+                    if (marker) {
+                        state.map.removeLayer(marker);
+                        delete state.markers[capsule.id];
+                        createMarker(capsule);
+                        
+                        // Show notification if enabled
+                        if (capsule.notifyOnUnlock) {
+                            showNotification('Capsule Unlocked!', `"${capsule.title}" has just unlocked!`, 'info');
+                        }
+                    }
+                }
+            });
+            updateStats();
+            updateCapsuleList();
+        }, 60000); // Check every minute
+
+        // Advanced Options Toggle
+        document.getElementById('advancedToggle').addEventListener('click', function() {
+            const content = document.getElementById('advancedContent');
+            const icon = this.querySelector('i');
+            
+            if (state.advancedOptionsOpen) {
+                content.classList.remove('expanded');
+                icon.className = 'fas fa-chevron-down';
+            } else {
+                content.classList.add('expanded');
+                icon.className = 'fas fa-chevron-up';
+            }
+            
+            state.advancedOptionsOpen = !state.advancedOptionsOpen;
+        });
+
+        // Search Functionality
+        document.getElementById('searchInput').addEventListener('input', function() {
+            state.searchQuery = this.value;
+            applyFilter();
+            updateCapsuleList();
+        });
+
+        // Theme Toggle
+        document.getElementById('themeToggle').addEventListener('click', function() {
+            state.isDarkTheme = !state.isDarkTheme;
+            document.body.classList.toggle('dark-theme', state.isDarkTheme);
+            
+            const icon = this.querySelector('i');
+            if (state.isDarkTheme) {
+                icon.className = 'fas fa-sun';
+            } else {
+                icon.className = 'fas fa-moon';
+            }
+            
+            // Save theme preference
+            localStorage.setItem('darkTheme', state.isDarkTheme);
+        });
+
+        // Notification System
+        function showNotification(title, message, type) {
+            const notification = document.getElementById('notification');
+            const notificationTitle = document.getElementById('notificationTitle');
+            const notificationMessage = document.getElementById('notificationMessage');
+            const icon = notification.querySelector('i');
+            
+            notificationTitle.textContent = title;
+            notificationMessage.textContent = message;
+            
+            // Set type and icon
+            notification.className = `notification ${type}`;
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle';
+            } else if (type === 'error') {
+                icon.className = 'fas fa-exclamation-circle';
+            } else {
+                icon.className = 'fas fa-info-circle';
+            }
+            
+            // Show notification
+            notification.classList.add('show');
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                hideNotification();
+            }, 5000);
+        }
+
+        function hideNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.remove('show');
+        }
+
+        document.getElementById('closeNotification').addEventListener('click', hideNotification);
+
+        // Capsule Details Modal
+        function showCapsuleDetails(capsule) {
+            const modal = document.getElementById('capsuleDetailsModal');
+            const modalContent = document.getElementById('modalContent');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const shareBtn = document.getElementById('shareCapsuleBtn');
+            
+            modalTitle.textContent = capsule.title;
+            
+            const isUnlocked = new Date() >= capsule.unlockDate;
+            
+            let content = '';
+            
+            if (isUnlocked) {
+                content += `
+                    <div class="capsule-info">
+                        <div class="capsule-info-label">Content</div>
+                        <div class="capsule-info-value">
+                `;
+                
+                if (capsule.type === 'note') {
+                    content += `<p>${capsule.message}</p>`;
+                } else if (capsule.type === 'link') {
+                    content += `<a href="${capsule.link}" target="_blank">${capsule.link}</a>`;
+                } else if (capsule.type === 'image') {
+                    content += `<img src="${capsule.image}" style="width: 100%; border-radius: 8px;" alt="Capsule image">`;
+                }
+                
+                content += `
+                        </div>
+                    </div>
+                `;
+                
+                // Show share button for unlocked capsules
+                shareBtn.style.display = 'block';
+                shareBtn.onclick = () => shareCapsule(capsule);
+            } else {
+                const timeLeft = getTimeUntilUnlock(capsule.unlockDate);
+                content += `
+                    <div class="capsule-info">
+                        <div class="capsule-info-label">Status</div>
+                        <div class="capsule-info-value">
+                            <div class="locked-message">
+                                🔐 This capsule will unlock in:<br>
+                                <div class="countdown">${timeLeft}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                shareBtn.style.display = 'none';
+            }
+            
+            content += `
+                <div class="capsule-info">
+                    <div class="capsule-info-label">Category</div>
+                    <div class="capsule-info-value">${capsule.category}</div>
+                </div>
+                <div class="capsule-info">
+                    <div class="capsule-info-label">Author</div>
+                    <div class="capsule-info-value">${capsule.author}</div>
+                </div>
+                <div class="capsule-info">
+                    <div class="capsule-info-label">Created</div>
+                    <div class="capsule-info-value">${capsule.createdAt.toLocaleString()}</div>
+                </div>
+                <div class="capsule-info">
+                    <div class="capsule-info-label">Unlocks</div>
+                    <div class="capsule-info-value">${capsule.unlockDate.toLocaleString()}</div>
+                </div>
+            `;
+            
+            modalBody.innerHTML = content;
+            
+            // Show modal
+            modal.classList.add('show');
+            setTimeout(() => {
+                modalContent.classList.add('show');
+            }, 10);
+        }
+
+        function hideCapsuleDetails() {
+            const modal = document.getElementById('capsuleDetailsModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalContent.classList.remove('show');
+            setTimeout(() => {
+                modal.classList.remove('show');
+            }, 300);
+        }
+
+        document.getElementById('closeModal').addEventListener('click', hideCapsuleDetails);
+        document.getElementById('closeModalBtn').addEventListener('click', hideCapsuleDetails);
+
+        // Share Capsule
+        function shareCapsule(capsule) {
+            if (navigator.share) {
+                navigator.share({
+                    title: capsule.title,
+                    text: capsule.type === 'note' ? capsule.message : `Check out this ${capsule.type} capsule`,
+                    url: window.location.href
+                }).then(() => {
+                    showNotification('Shared', 'Capsule shared successfully!', 'success');
+                }).catch(() => {
+                    showNotification('Error', 'Failed to share capsule', 'error');
+                });
+            } else {
+                // Fallback for browsers that don't support Web Share API
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    showNotification('Copied', 'Link copied to clipboard!', 'success');
+                }).catch(() => {
+                    showNotification('Error', 'Failed to copy link', 'error');
+                });
+            }
+        }
+
+        // Update Capsule List
+        function updateCapsuleList() {
+            const capsuleList = document.getElementById('capsuleList');
+            const now = new Date();
+            
+            // Filter capsules based on current filter and search
+            let filteredCapsules = state.capsules;
+            
+            if (state.currentFilter === 'locked') {
+                filteredCapsules = filteredCapsules.filter(c => now < c.unlockDate);
+            } else if (state.currentFilter === 'unlocked') {
+                filteredCapsules = filteredCapsules.filter(c => now >= c.unlockDate);
+            }
+            
+            if (state.searchQuery) {
+                filteredCapsules = filteredCapsules.filter(c => 
+                    c.title.toLowerCase().includes(state.searchQuery.toLowerCase()) || 
+                    c.message.toLowerCase().includes(state.searchQuery.toLowerCase())
+                );
+            }
+            
+            // Sort by creation date (newest first)
+            filteredCapsules.sort((a, b) => b.createdAt - a.createdAt);
+            
+            if (filteredCapsules.length === 0) {
+                capsuleList.innerHTML = '<p style="text-align: center; color: #666; font-style: italic; padding: 20px;">No capsules found</p>';
+                return;
+            }
+            
+            let html = '';
+            filteredCapsules.forEach(capsule => {
+                const isUnlocked = now >= capsule.unlockDate;
+                const status = isUnlocked ? 'unlocked' : 'locked';
+                const statusText = isUnlocked ? 'Unlocked' : 'Locked';
+                
+                html += `
+                    <div class="capsule-list-item" data-id="${capsule.id}">
+                        <div class="capsule-list-item-header">
+                            <div class="capsule-list-item-title">${capsule.title}</div>
+                            <div class="capsule-list-item-status ${status}">${statusText}</div>
+                        </div>
+                        <div class="capsule-list-item-details">
+                            <div>📁 ${capsule.category} • ✍️ ${capsule.author}</div>
+                            <div>🗓️ ${capsule.createdAt.toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            capsuleList.innerHTML = html;
+            
+            // Add click event to list items
+            document.querySelectorAll('.capsule-list-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const id = parseInt(this.getAttribute('data-id'));
+                    const capsule = state.capsules.find(c => c.id === id);
+                    if (capsule) {
+                        showCapsuleDetails(capsule);
+                    }
+                });
+            });
+        }
+
+        // Save capsules to localStorage
+        function saveCapsulesToStorage() {
+            const capsulesToSave = state.capsules.map(capsule => ({
+                ...capsule,
+                location: {
+                    lat: capsule.location.lat,
+                    lng: capsule.location.lng
+                }
+            }));
+            localStorage.setItem('timeCapsules', JSON.stringify(capsulesToSave));
+        }
+
+        // Load capsules from localStorage
+        function loadCapsulesFromStorage() {
+            const savedCapsules = localStorage.getItem('timeCapsules');
+            if (savedCapsules) {
+                const capsules = JSON.parse(savedCapsules);
+                capsules.forEach(capsule => {
+                    // Convert string dates back to Date objects
+                    capsule.unlockDate = new Date(capsule.unlockDate);
+                    capsule.createdAt = new Date(capsule.createdAt);
+                    
+                    // Convert location back to LatLng object
+                    capsule.location = L.latLng(capsule.location.lat, capsule.location.lng);
+                    
+                    state.capsules.push(capsule);
+                    createMarker(capsule);
+                });
+                updateStats();
+                updateCapsuleList();
+            }
+        }
+
+        // Load theme preference
+        function loadThemePreference() {
+            const darkTheme = localStorage.getItem('darkTheme') === 'true';
+            if (darkTheme) {
+                state.isDarkTheme = true;
+                document.body.classList.add('dark-theme');
+                document.getElementById('themeToggle').querySelector('i').className = 'fas fa-sun';
+            }
+        }
+
+        // Initialize
+        initMap();
+        loadCapsulesFromStorage();
+        loadThemePreference();
+        updateStats();
+        updateCapsuleList();
+
+        // Add some demo capsules for showcase
+        setTimeout(() => {
+            if (state.capsules.length === 0) {
+                const demoCapsules = [
+                    {
+                        id: 1,
+                        type: 'note',
+                        title: 'Welcome to 2026! 🎉',
+                        message: 'If you\'re reading this, we made it to 2026! Remember to celebrate the small victories.',
+                        author: 'Future Thinker',
+                        unlockDate: new Date('2026-01-01T00:00:00'),
+                        category: 'greeting',
+                        location: L.latLng(40.7128, -74.0060),
+                        createdAt: new Date(),
+                        public: true,
+                        notifyOnUnlock: false,
+                        password: null
+                    },
+                    {
+                        id: 2,
+                        type: 'note',
+                        title: 'Remember This Moment',
+                        message: 'The best time to plant a tree was 20 years ago. The second best time is now.',
+                        author: 'Wisdom Keeper',
+                        unlockDate: new Date(Date.now() - 86400000), // Yesterday - already unlocked
+                        category: 'wisdom',
+                        location: L.latLng(51.5074, -0.1278),
+                        createdAt: new Date(),
+                        public: true,
+                        notifyOnUnlock: false,
+                        password: null
+                    },
+                    {
+                        id: 3,
+                        type: 'link',
+                        title: 'Time Capsule Resources',
+                        link: 'https://wikipedia.org/wiki/Time_capsule',
+                        author: 'Anonymous',
+                        unlockDate: new Date(Date.now() - 3600000), // 1 hour ago - unlocked
+                        category: 'other',
+                        location: L.latLng(35.6762, 139.6503),
+                        createdAt: new Date(),
+                        public: true,
+                        notifyOnUnlock: false,
+                        password: null
+                    },
+                    {
+                        id: 4,
+                        type: 'note',
+                        title: 'New Year Goals Check-in',
+                        message: 'Take a moment to reflect on your goals from the start of the year. How far have you come?',
+                        author: 'Goal Tracker',
+                        unlockDate: new Date(Date.now() + 86400000 * 30), // 30 days from now
+                        category: 'milestone',
+                        location: L.latLng(-33.8688, 151.2093),
+                        createdAt: new Date(),
+                        public: true,
+                        notifyOnUnlock: true,
+                        password: null
+                    },
+                    {
+                        id: 5,
+                        type: 'image',
+                        title: 'Future Prediction',
+                        image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+                        author: 'Tech Enthusiast',
+                        unlockDate: new Date(Date.now() + 86400000 * 7), // 7 days from now
+                        category: 'prediction',
+                        location: L.latLng(37.7749, -122.4194),
+                        createdAt: new Date(),
+                        public: true,
+                        notifyOnUnlock: true,
+                        password: null
+                    }
+                ];
+                
+                demoCapsules.forEach(capsule => {
+                    state.capsules.push(capsule);
+                    createMarker(capsule);
+                });
+                updateStats();
+                updateCapsuleList();
+                saveCapsulesToStorage();
+            }
+        }, 500);
+    </script>
+</body>
+</html>
