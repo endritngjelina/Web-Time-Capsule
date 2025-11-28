@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Time Capsule - Plant Your Future Message</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            height: calc(100vh - 180px);
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            height: fit-content;
+            max-height: 100%;
+        }
+
+        .sidebar h2 {
+            margin-bottom: 1.5rem;
+            color: #667eea;
+            font-size: 1.25rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .map-container {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+        }
+
+        .map-instructions {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            font-size: 0.9rem;
+            color: #555;
+            pointer-events: none;
+        }
+
+        .capsule-list {
+            margin-top: 2rem;
+        }
+
+        .capsule-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .capsule-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .capsule-item.locked {
+            border-left-color: #ffa726;
+            opacity: 0.7;
+        }
+
+        .capsule-item.locked::before {
+            content: "🔒 ";
+        }
+
+        .capsule-item.unlocked::before {
+            content: "🌟 ";
+        }
+
+        .capsule-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+
+        .capsule-date {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-btn {
+            flex: 1;
+            padding: 0.5rem;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            display: none;
+        }
+
+        .toast.success {
+            border-left: 4px solid #4caf50;
+        }
+
+        .toast.error {
+            border-left: 4px solid #f44336;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .custom-popup {
+            min-width: 250px;
+        }
+
+        .popup-content {
+            padding: 0.5rem;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+
+        .popup-message {
+            margin: 0.75rem 0;
+            line-height: 1.5;
+        }
+
+        .popup-link {
+            color: #667eea;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .popup-link:hover {
+            text-decoration: underline;
+        }
+
+        .popup-meta {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #e0e0e0;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .countdown {
+            background: #fff3cd;
+            padding: 0.5rem;
+            border-radius: 5px;
+            margin-top: 0.5rem;
+            font-weight: 600;
+            color: #856404;
+        }
+
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .sidebar {
+                max-height: none;
+            }
+
+            #map {
+                min-height: 400px;
+            }
+
+            .stats {
+                width: 100%;
+                justify-content: space-around;
+            }
+        }
+
+        .emoji-picker {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .emoji-option {
+            font-size: 1.5rem;
+            cursor: pointer;
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .emoji-option:hover {
+            background: #e0e0e0;
+            transform: scale(1.2);
+        }
+
+        .emoji-option.selected {
+            background: #667eea;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">⏳</div>
+                <h1>Global Time Capsule</h1>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalCapsules">0</div>
+                    <div class="stat-label">Total Capsules</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="unlockedCapsules">0</div>
+                    <div class="stat-label">Unlocked</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="waitingCapsules">0</div>
+                    <div class="stat-label">Waiting</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <h2>🌱 Plant Your Time Capsule</h2>
+            
+            <form id="capsuleForm">
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" placeholder="My 2025 Message" required maxlength="50">
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Message *</label>
+                    <textarea id="message" placeholder="Share your thoughts, hopes, or wisdom..." required maxlength="500"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="link">Link (optional)</label>
+                    <input type="url" id="link" placeholder="https://example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="unlockDate">Unlock Date *</label>
+                    <input type="datetime-local" id="unlockDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category">
+                        <option value="personal">Personal</option>
+                        <option value="wisdom">Wisdom</option>
+                        <option value="memory">Memory</option>
+                        <option value="prediction">Prediction</option>
+                        <option value="greeting">Greeting</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Choose an Icon</label>
+                    <div class="emoji-picker">
+                        <div class="emoji-option" data-emoji="💌">💌</div>
+                        <div class="emoji-option" data-emoji="⏰">⏰</div>
+                        <div class="emoji-option selected" data-emoji="📝">📝</div>
+                        <div class="emoji-option" data-emoji="🎁">🎁</div>
+                        <div class="emoji-option" data-emoji="🌟">🌟</div>
+                        <div class="emoji-option" data-emoji="💭">💭</div>
+                        <div class="emoji-option" data-emoji="🚀">🚀</div>
+                        <div class="emoji-option" data-emoji="🌈">🌈</div>
+                        <div class="emoji-option" data-emoji="💡">💡</div>
+                        <div class="emoji-option" data-emoji="🎯">🎯</div>
+                        <div class="emoji-option" data-emoji="🏆">🏆</div>
+                        <div class="emoji-option" data-emoji="❤️">❤️</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="button" id="submitBtn">📍 Plant on Map (Click Location)</button>
+            </form>
+
+            <div class="capsule-list">
+                <h2>🗺️ All Capsules</h2>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="unlocked">Unlocked</button>
+                    <button class="filter-btn" data-filter="locked">Locked</button>
+                </div>
+                <div id="capsulesList"></div>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div class="map-instructions" id="mapInstructions">
+                Click anywhere on the map to plant your time capsule 🗺️
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Application State
+        const state = {
+            map: null,
+            capsules: [],
+            selectedLocation: null,
+            isPlantingMode: false,
+            selectedEmoji: '📝',
+            currentFilter: 'all',
+            tempMarker: null
+        };
+
+        // Initialize map
+        function initMap() {
+            state.map = L.map('map').setView([20, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(state.map);
+
+            // Map click handler for planting capsules
+            state.map.on('click', (e) => {
+                if (state.isPlantingMode) {
+                    state.selectedLocation = e.latlng;
+                    
+                    // Remove previous temp marker
+                    if (state.tempMarker) {
+                        state.map.removeLayer(state.tempMarker);
+                    }
+                    
+                    // Add temporary marker
+                    state.tempMarker = L.marker([e.latlng.lat, e.latlng.lng], {
+                        icon: createCustomIcon(state.selectedEmoji, true)
+                    }).addTo(state.map);
+                    
+                    showToast('Location selected! Click "Confirm & Plant" to save.', 'success');
+                    document.getElementById('submitBtn').textContent = '✅ Confirm & Plant Capsule';
+                }
+            });
+        }
+
+        // Create custom marker icon
+        function createCustomIcon(emoji, isTemp = false) {
+            const opacity = isTemp ? 0.6 : 1;
+            return L.divIcon({
+                html: `<div style="font-size: 32px; opacity: ${opacity}; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">${emoji}</div>`,
+                className: 'custom-marker',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40]
+            });
+        }
+
+        // Form submission
+        document.getElementById('capsuleForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            if (!state.isPlantingMode) {
+                // Enter planting mode
+                state.isPlantingMode = true;
+                document.getElementById('submitBtn').textContent = '📍 Click Map to Choose Location';
+                document.getElementById('mapInstructions').style.display = 'block';
+                showToast('Click anywhere on the map to place your capsule!', 'success');
+            } else if (state.selectedLocation) {
+                // Plant the capsule
+                plantCapsule();
+            } else {
+                showToast('Please click on the map to select a location first!', 'error');
+            }
+        });
+
+        // Plant capsule function
+        function plantCapsule() {
+            const title = document.getElementById('title').value;
+            const message = document.getElementById('message').value;
+            const link = document.getElementById('link').value;
+            const unlockDate = new Date(document.getElementById('unlockDate').value);
+            const category = document.getElementById('category').value;
+
+            if (unlockDate <= new Date()) {
+                showToast('Unlock date must be in the future!', 'error');
+                return;
+            }
+
+            const capsule = {
+                id: Date.now(),
+                title,
+                message,
+                link,
+                unlockDate: unlockDate.toISOString(),
+                category,
+                emoji: state.selectedEmoji,
+                location: {
+                    lat: state.selectedLocation.lat,
+                    lng: state.selectedLocation.lng
+                },
+                createdAt: new Date().toISOString()
+            };
+
+            state.capsules.push(capsule);
+            saveCapsules();
+            addMarkerToMap(capsule);
+            updateCapsulesList();
+            updateStats();
+            
+            // Reset form and state
+            document.getElementById('capsuleForm').reset();
+            state.isPlantingMode = false;
+            state.selectedLocation = null;
+            document.getElementById('submitBtn').textContent = '📍 Plant on Map (Click Location)';
+            document.getElementById('mapInstructions').style.display = 'none';
+            
+            if (state.tempMarker) {
+                state.map.removeLayer(state.tempMarker);
+                state.tempMarker = null;
+            }
+
+            showToast('Time capsule planted successfully! 🎉', 'success');
+            
+            // Zoom to the new capsule
+            state.map.setView([capsule.location.lat, capsule.location.lng], 8);
+        }
+
+        // Add marker to map
+        function addMarkerToMap(capsule) {
+            const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+            
+            const marker = L.marker([capsule.location.lat, capsule.location.lng], {
+                icon: createCustomIcon(capsule.emoji)
+            }).addTo(state.map);
+
+            const popupContent = createPopupContent(capsule);
+            marker.bindPopup(popupContent, { className: 'custom-popup' });
+            
+            capsule.marker = marker;
+        }
+
+        // Create popup content
+        function createPopupContent(capsule) {
+            const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+            const unlockDate = new Date(capsule.unlockDate);
+            
+            let content = `<div class="popup-content">`;
+            content += `<div class="popup-title">${capsule.emoji} ${capsule.title}</div>`;
+            
+            if (isUnlocked) {
+                content += `<div class="popup-message">${capsule.message}</div>`;
+                if (capsule.link) {
+                    content += `<div><a href="${capsule.link}" target="_blank" class="popup-link">🔗 ${capsule.link}</a></div>`;
+                }
+            } else {
+                content += `<div class="countdown">🔒 Unlocks in ${getTimeRemaining(unlockDate)}</div>`;
+                content += `<div class="popup-message" style="opacity: 0.3;">Message hidden until ${unlockDate.toLocaleDateString()}</div>`;
+            }
+            
+            content += `<div class="popup-meta">`;
+            content += `<div>📁 ${capsule.category}</div>`;
+            content += `<div>📅 ${isUnlocked ? 'Unlocked' : 'Unlocks'}: ${unlockDate.toLocaleString()}</div>`;
+            content += `</div></div>`;
+            
+            return content;
+        }
+
+        // Get time remaining
+        function getTimeRemaining(date) {
+            const diff = date - new Date();
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            
+            if (days > 0) return `${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours !== 1 ? 's' : ''}`;
+            if (hours > 0) return `${hours} hour${hours !== 1 ? 's' : ''}`;
+            return 'less than 1 hour';
+        }
+
+        // Update capsules list
+        function updateCapsulesList() {
+            const list = document.getElementById('capsulesList');
+            const filteredCapsules = state.capsules.filter(c => {
+                const isUnlocked = new Date(c.unlockDate) <= new Date();
+                if (state.currentFilter === 'unlocked') return isUnlocked;
+                if (state.currentFilter === 'locked') return !isUnlocked;
+                return true;
+            });
+
+            if (filteredCapsules.length === 0) {
+                list.innerHTML = '<p style="color: #999; text-align: center; padding: 2rem;">No capsules yet</p>';
+                return;
+            }
+
+            list.innerHTML = filteredCapsules.map(c => {
+                const isUnlocked = new Date(c.unlockDate) <= new Date();
+                return `
+                    <div class="capsule-item ${isUnlocked ? 'unlocked' : 'locked'}" onclick="focusCapsule(${c.id})">
+                        <div class="capsule-title">${c.emoji} ${c.title}</div>
+                        <div class="capsule-date">
+                            ${isUnlocked ? 'Unlocked' : 'Unlocks'}: ${new Date(c.unlockDate).toLocaleDateString()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Focus on capsule
+        function focusCapsule(id) {
+            const capsule = state.capsules.find(c => c.id === id);
+            if (capsule && capsule.marker) {
+                state.map.setView([capsule.location.lat, capsule.location.lng], 10);
+                capsule.marker.openPopup();
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const total = state.capsules.length;
+            const unlocked = state.capsules.filter(c => new Date(c.unlockDate) <= new Date()).length;
+            
+            document.getElementById('totalCapsules').textContent = total;
+            document.getElementById('unlockedCapsules').textContent = unlocked;
+            document.getElementById('waitingCapsules').textContent = total - unlocked;
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Save capsules to memory
+        function saveCapsules() {
+            // In a real application, this would save to a backend
+            // For this demo, we're keeping it in memory
+        }
+
+        // Load capsules from memory
+        function loadCapsules() {
+            // In a real application, this would load from a backend
+            // For demo purposes, starting with empty array
+            state.capsules.forEach(addMarkerToMap);
+            updateCapsulesList();
+            updateStats();
+        }
+
+        // Emoji picker
+        document.querySelectorAll('.emoji-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                document.querySelectorAll('.emoji-option').forEach(o => o.classList.remove('selected'));
+                e.target.classList.add('selected');
+                state.selectedEmoji = e.target.dataset.emoji;
+            });
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                state.currentFilter = e.target.dataset.filter;
+                updateCapsulesList();
+            });
+        });
+
+        // Set minimum unlock date to current time
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('unlockDate').min = now.toISOString().slice(0, 16);
+
+        // Auto-refresh unlocked status every minute
+        setInterval(() => {
+            state.capsules.forEach(capsule => {
+                if (capsule.marker) {
+                    const popup = capsule.marker.getPopup();
+                    if (popup) {
+                        popup.setContent(createPopupContent(capsule));
+                    }
+                }
+            });
+            updateCapsulesList();
+            updateStats();
+        }, 60000);
+
+        // Initialize
+        initMap();
+        loadCapsules();
+        updateStats();
+    </script>
+</body>
+</html>
