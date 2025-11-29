@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Time Capsule - Plant Your Digital Legacy</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --dark: #1e293b;
+            --dark-light: #334155;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --shadow-lg: rgba(0, 0, 0, 0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px var(--shadow-lg);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+            height: calc(100vh - 180px);
+        }
+
+        .map-container {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px var(--shadow-lg);
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px var(--shadow);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--shadow-lg);
+        }
+
+        .control-btn.primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .control-btn.secondary {
+            background: linear-gradient(135deg, var(--secondary), #db2777);
+            color: white;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px var(--shadow-lg);
+        }
+
+        .panel h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 14px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .capsule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .capsule-item {
+            padding: 16px;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .capsule-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .capsule-item.locked {
+            border-left-color: var(--warning);
+            opacity: 0.8;
+        }
+
+        .capsule-item.unlocked {
+            border-left-color: var(--success);
+        }
+
+        .capsule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .capsule-title {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 15px;
+        }
+
+        .capsule-status {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-locked {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-unlocked {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .capsule-date {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .capsule-preview {
+            font-size: 13px;
+            color: #475569;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #94a3b8;
+            transition: all 0.3s ease;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        .modal-close:hover {
+            background: #f1f5f9;
+            color: var(--dark);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .category-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .category-option {
+            padding: 10px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .category-option.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border-left: 4px solid var(--primary);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #1e40af;
+            margin-top: 12px;
+        }
+
+        .char-counter {
+            text-align: right;
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                max-height: none;
+            }
+        }
+
+        /* Custom marker styles */
+        .custom-marker {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: 3px solid white;
+            border-radius: 50% 50% 50% 0;
+            width: 40px;
+            height: 40px;
+            transform: rotate(-45deg);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .custom-marker span {
+            transform: rotate(45deg);
+            font-size: 20px;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">⏳</div>
+                <div>
+                    <h1>Web Time Capsule</h1>
+                    <div class="subtitle">Plant your digital legacy on the map</div>
+                </div>
+            </div>
+            <div class="header-stats">
+                <div class="stat">
+                    <div class="stat-value" id="totalCapsules">0</div>
+                    <div class="stat-label">Total Capsules</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="unlockedCapsules">0</div>
+                    <div class="stat-label">Unlocked</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="lockedCapsules">0</div>
+                    <div class="stat-label">Locked</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="map-container">
+                <div class="map-controls">
+                    <button class="control-btn primary" id="addCapsuleBtn">
+                        <span>📍</span> Plant Capsule
+                    </button>
+                    <button class="control-btn secondary" id="viewAllBtn">
+                        <span>🗺️</span> View All
+                    </button>
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <div class="sidebar">
+                <div class="panel">
+                    <h2>🌱 Create Time Capsule</h2>
+                    <form id="capsuleForm">
+                        <div class="form-group">
+                            <label>Capsule Title</label>
+                            <input type="text" id="capsuleTitle" placeholder="My Time Capsule" required maxlength="50">
+                            <div class="char-counter"><span id="titleCounter">0</span>/50</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Category</label>
+                            <div class="category-selector">
+                                <div class="category-option" data-category="memory">💭 Memory</div>
+                                <div class="category-option selected" data-category="message">💌 Message</div>
+                                <div class="category-option" data-category="link">🔗 Link</div>
+                                <div class="category-option" data-category="wish">⭐ Wish</div>
+                            </div>
+                            <input type="hidden" id="category" value="message">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Content</label>
+                            <textarea id="capsuleContent" placeholder="Write your message to the future..." required maxlength="500"></textarea>
+                            <div class="char-counter"><span id="contentCounter">0</span>/500</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>URL (Optional)</label>
+                            <input type="url" id="capsuleUrl" placeholder="https://example.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Unlock Date</label>
+                            <input type="datetime-local" id="unlockDate" required>
+                        </div>
+
+                        <div class="info-box">
+                            📍 Click on the map to place your capsule, or we'll use your current location
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            Plant Capsule
+                        </button>
+                    </form>
+                </div>
+
+                <div class="panel">
+                    <h2>📦 Recent Capsules</h2>
+                    <div class="filter-group">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="unlocked">Unlocked</button>
+                        <button class="filter-btn" data-filter="locked">Locked</button>
+                    </div>
+                    <div class="capsule-list" id="capsuleList">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🌍</div>
+                            <p>No capsules yet. Plant your first one!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="capsuleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Time Capsule</div>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map
+        const map = L.map('map', {
+            zoomControl: false
+        }).setView([20, 0], 2);
+
+        L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Data storage
+        let capsules = [];
+        let selectedLocation = null;
+        let currentFilter = 'all';
+        let selectedCategory = 'message';
+
+        // Load capsules from memory
+        function loadCapsules() {
+            // Start with sample data for demonstration
+            if (capsules.length === 0) {
+                const now = new Date();
+                capsules = [
+                    {
+                        id: Date.now() + 1,
+                        title: "Welcome Capsule",
+                        content: "Welcome to Web Time Capsule! This is a demo capsule that's already unlocked.",
+                        category: "message",
+                        url: "",
+                        unlockDate: new Date(now.getTime() - 86400000).toISOString(),
+                        lat: 40.7128,
+                        lng: -74.0060,
+                        createdAt: new Date(now.getTime() - 172800000).toISOString()
+                    },
+                    {
+                        id: Date.now() + 2,
+                        title: "Future Message",
+                        content: "This capsule is locked until tomorrow. Come back to see what's inside!",
+                        category: "wish",
+                        url: "",
+                        unlockDate: new Date(now.getTime() + 86400000).toISOString(),
+                        lat: 51.5074,
+                        lng: -0.1278,
+                        createdAt: new Date(now.getTime() - 86400000).toISOString()
+                    }
+                ];
+            }
+            renderCapsules();
+            updateStats();
+        }
+
+        // Map click handler
+        map.on('click', function(e) {
+            selectedLocation = e.latlng;
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent('<strong>📍 Location Selected</strong><br>Capsule will be planted here')
+                .openOn(map);
+        });
+
+        // Form handling
+        document.getElementById('capsuleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('capsuleTitle').value;
+            const content = document.getElementById('capsuleContent').value;
+            const url = document.getElementById('capsuleUrl').value;
+            const unlockDate = document.getElementById('unlockDate').value;
+            
+            if (!selectedLocation) {
+                // Use default location if none selected
+                selectedLocation = { lat: 40.7128, lng: -74.0060 };
+            }
+
+            const capsule = {
+                id: Date.now(),
+                title: title,
+                content: content,
+                category: selectedCategory,
+                url: url,
+                unlockDate: new Date(unlockDate).toISOString(),
+                lat: selectedLocation.lat,
+                lng: selectedLocation.lng,
+                createdAt: new Date().toISOString()
+            };
+
+            capsules.push(capsule);
+            renderCapsules();
+            updateStats();
+            
+            // Reset form
+            this.reset();
+            document.getElementById('titleCounter').textContent = '0';
+            document.getElementById('contentCounter').textContent = '0';
+            selectedLocation = null;
+            
+            // Set default date
+            setMinDate();
+            
+            // Show success
+            showNotification('🎉 Capsule planted successfully!');
+        });
+
+        // Category selector
+        document.querySelectorAll('.category-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.category-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedCategory = this.dataset.category;
+                document.getElementById('category').value = selectedCategory;
+            });
+        });
+
+        // Character counters
+        document.getElementById('capsuleTitle').addEventListener('input', function() {
+            document.getElementById('titleCounter').textContent = this.value.length;
+        });
+
+        document.getElementById('capsuleContent').addEventListener('input', function() {
+            document.getElementById('contentCounter').textContent = this.value.length;
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                renderCapsules();
+            });
+        });
+
+        // Control buttons
+        document.getElementById('addCapsuleBtn').addEventListener('click', function() {
+            document.getElementById('capsuleTitle').focus();
+        });
+
+        document.getElementById('viewAllBtn').addEventListener('click', function() {
+            map.fitBounds(capsules.map(c => [c.lat, c.lng]));
+        });
+
+        function renderCapsules() {
+            // Clear existing markers
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            const listContainer = document.getElementById('capsuleList');
+            listContainer.innerHTML = '';
+
+            let filteredCapsules = capsules;
+            if (currentFilter === 'unlocked') {
+                filteredCapsules = capsules.filter(c => new Date(c.unlockDate) <= new Date());
+            } else if (currentFilter === 'locked') {
+                filteredCapsules = capsules.filter(c => new Date(c.unlockDate) > new Date());
+            }
+
+            if (filteredCapsules.length === 0) {
+                listContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>No capsules found</p></div>';
+                return;
+            }
+
+            filteredCapsules.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(capsule => {
+                const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+                
+                // Add marker to map
+                const categoryEmojis = {
+                    memory: '💭',
+                    message: '💌',
+                    link: '🔗',
+                    wish: '⭐'
+                };
+
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<span>${isUnlocked ? '🔓' : '🔒'}</span>`,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40]
+                });
+
+                const marker = L.marker([capsule.lat, capsule.lng], { icon: icon }).addTo(map);
+                marker.bindPopup(createPopupContent(capsule, isUnlocked));
+                marker.on('click', () => openCapsuleModal(capsule, isUnlocked));
+
+                // Add to list
+                const item = document.createElement('div');
+                item.className = `capsule-item ${isUnlocked ? 'unlocked' : 'locked'}`;
+                item.innerHTML = `
+                    <div class="capsule-header">
+                        <div class="capsule-title">${categoryEmojis[capsule.category]} ${capsule.title}</div>
+                        <span class="capsule-status ${isUnlocked ? 'status-unlocked' : 'status-locked'}">
+                            ${isUnlocked ? '🔓 Unlocked' : '🔒 Locked'}
+                        </span>
+                    </div>
+                    <div class="capsule-date">
+                        ${isUnlocked ? 'Unlocked' : 'Unlocks'}: ${formatDate(capsule.unlockDate)}
+                    </div>
+                    <div class="capsule-preview">
+                        ${isUnlocked ? capsule.content : '🔒 This content will be revealed on ' + formatDate(capsule.unlockDate)}
+                    </div>
+                `;
+                item.addEventListener('click', () => openCapsuleModal(capsule, isUnlocked));
+                listContainer.appendChild(item);
+            });
+        }
+
+        function createPopupContent(capsule, isUnlocked) {
+            const categoryEmojis = {
+                memory: '💭',
+                message: '💌',
+                link: '🔗',
+                wish: '⭐'
+            };
+            return `
+                <strong>${categoryEmojis[capsule.category]} ${capsule.title}</strong><br>
+                <small>${isUnlocked ? 'Unlocked' : 'Unlocks'}: ${formatDate(capsule.unlockDate)}</small><br>
+                <small>Click for details</small>
+            `;
+        }
+
+        function openCapsuleModal(capsule, isUnlocked) {
+            const modal = document.getElementById('capsuleModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+
+            const categoryEmojis = {
+                memory: '💭',
+                message: '💌',
+                link: '🔗',
+                wish: '⭐'
+            };
+
+            modalTitle.textContent = `${categoryEmojis[capsule.category]} ${capsule.title}`;
+
+            if (isUnlocked) {
+                modalBody.innerHTML = `
+                    <div style="margin-bottom: 20px;">
+                        <div style="padding: 16px; background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 12px; margin-bottom: 16px;">
+                            <strong style="color: #065f46;">✨ This capsule has been unlocked!</strong>
+                            <div style="font-size: 13px; color: #065f46; margin-top: 4px;">Unlocked on ${formatDate(capsule.unlockDate)}</div>
+                        </div>
+                        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 16px;">
+                            <p style="line-height: 1.6; color: #334155; white-space: pre-wrap;">${capsule.content}</p>
+                        </div>
+                        ${capsule.url ? `<div style="margin-bottom: 16px;">
+                            <strong style="display: block; margin-bottom: 8px; color: #1e293b;">🔗 Link:</strong>
+                            <a href="${capsule.url}" target="_blank" style="color: #6366f1; text-decoration: none; word-break: break-all;">${capsule.url}</a>
+                        </div>` : ''}
+                        <div style="font-size: 13px; color: #64748b;">
+                            <strong>📅 Planted:</strong> ${formatDate(capsule.createdAt)}<br>
+                            <strong>📍 Location:</strong> ${capsule.lat.toFixed(4)}°, ${capsule.lng.toFixed(4)}°
+                        </div>
+                    </div>
+                `;
+            } else {
+                const timeRemaining = getTimeRemaining(capsule.unlockDate);
+                modalBody.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <div style="font-size: 64px; margin-bottom: 16px;">🔒</div>
+                        <h3 style="color: #1e293b; margin-bottom: 12px;">This capsule is still locked</h3>
+                        <p style="color: #64748b; margin-bottom: 24px;">Come back on ${formatDate(capsule.unlockDate)} to unlock it!</p>
+                        <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 20px; border-radius: 12px; margin-bottom: 16px;">
+                            <div style="font-size: 14px; color: #92400e; font-weight: 600;">Time Remaining:</div>
+                            <div style="font-size: 24px; color: #92400e; font-weight: 700; margin-top: 8px;">${timeRemaining}</div>
+                        </div>
+                        <div style="font-size: 13px; color: #64748b; text-align: left;">
+                            <strong>📅 Planted:</strong> ${formatDate(capsule.createdAt)}<br>
+                            <strong>📍 Location:</strong> ${capsule.lat.toFixed(4)}°, ${capsule.lng.toFixed(4)}°
+                        </div>
+                    </div>
+                `;
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('capsuleModal').classList.remove('active');
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function getTimeRemaining(dateStr) {
+            const now = new Date();
+            const target = new Date(dateStr);
+            const diff = target - now;
+
+            if (diff <= 0) return 'Unlocked!';
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+            if (days > 0) {
+                return `${days}d ${hours}h ${minutes}m`;
+            } else if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else {
+                return `${minutes}m`;
+            }
+        }
+
+        function updateStats() {
+            const total = capsules.length;
+            const unlocked = capsules.filter(c => new Date(c.unlockDate) <= new Date()).length;
+            const locked = total - unlocked;
+
+            document.getElementById('totalCapsules').textContent = total;
+            document.getElementById('unlockedCapsules').textContent = unlocked;
+            document.getElementById('lockedCapsules').textContent = locked;
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+                padding: 16px 24px;
+                border-radius: 12px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+                z-index: 3000;
+                font-weight: 600;
+                animation: slideInRight 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function setMinDate() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('unlockDate').min = now.toISOString().slice(0, 16);
+            
+            // Set default to 1 week from now
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            nextWeek.setMinutes(nextWeek.getMinutes() - nextWeek.getTimezoneOffset());
+            document.getElementById('unlockDate').value = nextWeek.toISOString().slice(0, 16);
+        }
+
+        // Close modal on outside click
+        document.getElementById('capsuleModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOutRight {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize
+        setMinDate();
+        loadCapsules();
+
+        // Update time remaining every minute
+        setInterval(() => {
+            renderCapsules();
+            updateStats();
+        }, 60000);
+    </script>
+</body>
+</html>
