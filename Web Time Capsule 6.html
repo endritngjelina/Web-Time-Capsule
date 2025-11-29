@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Time Capsule - Plant Your Legacy</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            z-index: 10;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #667eea 50%, transparent);
+            opacity: 0.3;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .logo-icon:hover {
+            transform: rotate(10deg) scale(1.05);
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1800px;
+            margin: 0 auto;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 400px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 10px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+        }
+
+        .sidebar h2 {
+            margin-bottom: 1.5rem;
+            color: #333;
+            font-size: 1.3rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.875rem;
+            border: 2px solid rgba(102, 126, 234, 0.15);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+            background: rgba(248, 249, 255, 0.5);
+        }
+
+        .form-group input:hover,
+        .form-group textarea:hover,
+        .form-group select:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            background: rgba(248, 249, 255, 0.8);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            background: white;
+            transform: translateY(-1px);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .capsule-type {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .type-option {
+            flex: 1;
+            padding: 0.875rem;
+            border: 2px solid rgba(102, 126, 234, 0.15);
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(248, 249, 255, 0.5);
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .type-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .type-option:hover::before {
+            left: 100%;
+        }
+
+        .type-option:hover {
+            border-color: #667eea;
+            background: rgba(248, 249, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .type-option.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1.125rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+
+        .btn:hover::before {
+            width: 400px;
+            height: 400px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            position: relative;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-primary:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .map-container {
+            flex: 1;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+            filter: saturate(1.1) contrast(1.05);
+        }
+
+        .filter-bar {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            padding: 1rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            display: flex;
+            gap: 0.75rem;
+            flex-direction: column;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .filter-btn {
+            padding: 0.625rem 1.25rem;
+            border: 2px solid rgba(102, 126, 234, 0.15);
+            border-radius: 8px;
+            background: rgba(248, 249, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            background: rgba(248, 249, 255, 0.9);
+            transform: translateX(-3px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .filter-btn.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateX(-3px);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .capsule-popup {
+            min-width: 250px;
+        }
+
+        .capsule-header {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .capsule-meta {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.75rem;
+        }
+
+        .capsule-content {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .locked-capsule {
+            text-align: center;
+            padding: 1rem;
+            color: #999;
+        }
+
+        .locked-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .countdown {
+            font-size: 0.9rem;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            color: #667eea;
+            margin-left: 0.25rem;
+        }
+
+        .note-badge {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2e7d32;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            border: 1px solid rgba(46, 125, 50, 0.2);
+        }
+
+        .link-badge {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #1565c0;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            border: 1px solid rgba(21, 101, 192, 0.2);
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: none;
+            }
+
+            .map-container {
+                min-height: 500px;
+            }
+        }
+
+        .marker-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
+            }
+        }
+
+        .success-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: white;
+            padding: 3rem 4rem;
+            border-radius: 24px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            text-align: center;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .success-message.show {
+            transform: translate(-50%, -50%) scale(1);
+            animation: successPulse 0.6s ease;
+        }
+
+        @keyframes successPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: rotateIn 0.6s ease;
+        }
+
+        @keyframes rotateIn {
+            from { transform: rotate(-180deg) scale(0); }
+            to { transform: rotate(0) scale(1); }
+        }
+
+        .success-message h2 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Loading animation for form submission */
+        .btn-primary.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spinner 0.6s linear infinite;
+        }
+
+        @keyframes spinner {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Tooltip enhancement */
+        .tooltip:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.5rem 1rem;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            margin-bottom: 0.5rem;
+            z-index: 1000;
+        }
+
+        /* Smooth scrollbar for all elements */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #667eea rgba(102, 126, 234, 0.1);
+        }
+
+        /* Enhanced focus states for accessibility */
+        button:focus-visible,
+        input:focus-visible,
+        textarea:focus-visible,
+        select:focus-visible {
+            outline: 3px solid rgba(102, 126, 234, 0.5);
+            outline-offset: 2px;
+        }
+
+        /* Micro-interactions */
+        .form-group label {
+            transition: color 0.3s ease;
+        }
+
+        .form-group input:focus ~ label,
+        .form-group textarea:focus ~ label,
+        .form-group select:focus ~ label {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">⏰</div>
+            <h1>Web Time Capsule</h1>
+        </div>
+        <div class="header-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalCapsules">0</div>
+                <div class="stat-label">Total Capsules</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="lockedCapsules">0</div>
+                <div class="stat-label">Locked</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="unlockedCapsules">0</div>
+                <div class="stat-label">Unlocked</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <h2>🌱 Plant Your Time Capsule</h2>
+            <form id="capsuleForm">
+                <div class="form-group">
+                    <label>Capsule Type</label>
+                    <div class="capsule-type">
+                        <div class="type-option active" data-type="note">
+                            📝 Note
+                        </div>
+                        <div class="type-option" data-type="link">
+                            🔗 Link
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="title">Title <span class="tooltip" title="Give your capsule a memorable name">ⓘ</span></label>
+                    <input type="text" id="title" placeholder="My future message..." required maxlength="100">
+                </div>
+
+                <div class="form-group" id="noteGroup">
+                    <label for="content">Message</label>
+                    <textarea id="content" placeholder="Write something for the future..." required maxlength="1000"></textarea>
+                </div>
+
+                <div class="form-group" id="linkGroup" style="display: none;">
+                    <label for="link">URL</label>
+                    <input type="url" id="link" placeholder="https://example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="unlockDate">Unlock Date <span class="tooltip" title="When should this capsule be revealed?">ⓘ</span></label>
+                    <input type="datetime-local" id="unlockDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="author">Your Name (Optional)</label>
+                    <input type="text" id="author" placeholder="Anonymous" maxlength="50">
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category" required>
+                        <option value="personal">💭 Personal Reflection</option>
+                        <option value="advice">💡 Life Advice</option>
+                        <option value="memory">🎭 Memory</option>
+                        <option value="prediction">🔮 Prediction</option>
+                        <option value="goal">🎯 Goal</option>
+                        <option value="gratitude">🙏 Gratitude</option>
+                        <option value="other">🌟 Other</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    🚀 Plant Capsule
+                </button>
+            </form>
+        </div>
+
+        <div class="map-container">
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All Capsules</button>
+                <button class="filter-btn" data-filter="locked">🔒 Locked</button>
+                <button class="filter-btn" data-filter="unlocked">🔓 Unlocked</button>
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="success-message" id="successMessage">
+        <div class="success-icon">🎉</div>
+        <h2>Capsule Planted!</h2>
+        <p>Your time capsule has been successfully planted on the map.</p>
+    </div>
+
+    <script>
+        // Data storage
+        const capsules = [];
+        let map;
+        let markers = [];
+        let selectedType = 'note';
+        let currentFilter = 'all';
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([20, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Add click handler for placing capsules
+            map.on('click', function(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                document.getElementById('capsuleForm').dataset.lat = lat;
+                document.getElementById('capsuleForm').dataset.lng = lng;
+                
+                // Visual feedback
+                const tempMarker = L.circleMarker([lat, lng], {
+                    color: '#667eea',
+                    fillColor: '#667eea',
+                    fillOpacity: 0.3,
+                    radius: 15
+                }).addTo(map);
+                
+                setTimeout(() => map.removeLayer(tempMarker), 1000);
+            });
+
+            loadCapsules();
+        }
+
+        // Type selection
+        document.querySelectorAll('.type-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.type-option').forEach(o => o.classList.remove('active'));
+                this.classList.add('active');
+                selectedType = this.dataset.type;
+                
+                if (selectedType === 'note') {
+                    document.getElementById('noteGroup').style.display = 'block';
+                    document.getElementById('linkGroup').style.display = 'none';
+                    document.getElementById('content').required = true;
+                    document.getElementById('link').required = false;
+                } else {
+                    document.getElementById('noteGroup').style.display = 'none';
+                    document.getElementById('linkGroup').style.display = 'block';
+                    document.getElementById('content').required = false;
+                    document.getElementById('link').required = true;
+                }
+            });
+        });
+
+        // Set minimum date to now
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('unlockDate').min = now.toISOString().slice(0, 16);
+
+        // Form submission
+        document.getElementById('capsuleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const lat = parseFloat(this.dataset.lat);
+            const lng = parseFloat(this.dataset.lng);
+            
+            if (!lat || !lng) {
+                alert('Please click on the map to choose a location for your capsule!');
+                return;
+            }
+
+            const capsule = {
+                id: Date.now(),
+                type: selectedType,
+                title: document.getElementById('title').value,
+                content: selectedType === 'note' ? document.getElementById('content').value : document.getElementById('link').value,
+                unlockDate: new Date(document.getElementById('unlockDate').value),
+                author: document.getElementById('author').value || 'Anonymous',
+                category: document.getElementById('category').value,
+                lat: lat,
+                lng: lng,
+                createdAt: new Date()
+            };
+
+            capsules.push(capsule);
+            saveCapsules();
+            addMarker(capsule);
+            updateStats();
+            
+            // Reset form
+            this.reset();
+            delete this.dataset.lat;
+            delete this.dataset.lng;
+            
+            // Show success message
+            showSuccess();
+        });
+
+        // Add marker to map
+        function addMarker(capsule) {
+            const isUnlocked = new Date() >= capsule.unlockDate;
+            
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    background: ${isUnlocked ? '#4caf50' : '#ff9800'};
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 16px;
+                    border: 3px solid white;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                ">${isUnlocked ? '🔓' : '🔒'}</div>`,
+                iconSize: [30, 30]
+            });
+
+            const marker = L.marker([capsule.lat, capsule.lng], { icon: icon }).addTo(map);
+            
+            marker.capsuleData = capsule;
+            marker.on('click', () => showCapsulePopup(capsule, marker));
+            
+            markers.push(marker);
+            
+            return marker;
+        }
+
+        // Show capsule popup
+        function showCapsulePopup(capsule, marker) {
+            const isUnlocked = new Date() >= capsule.unlockDate;
+            
+            let popupContent;
+            
+            if (isUnlocked) {
+                const badge = capsule.type === 'note' 
+                    ? '<span class="note-badge">Note</span>' 
+                    : '<span class="link-badge">Link</span>';
+                
+                const contentDisplay = capsule.type === 'link'
+                    ? `<a href="${capsule.content}" target="_blank" style="color: #667eea; text-decoration: none;">${capsule.content}</a>`
+                    : `<p>${capsule.content}</p>`;
+                
+                popupContent = `
+                    <div class="capsule-popup">
+                        <div class="capsule-header">${capsule.title}</div>
+                        <div class="capsule-meta">
+                            By ${capsule.author} • ${formatDate(capsule.createdAt)}
+                            ${badge}
+                        </div>
+                        <div class="capsule-content">
+                            ${contentDisplay}
+                        </div>
+                    </div>
+                `;
+            } else {
+                const timeLeft = getTimeUntilUnlock(capsule.unlockDate);
+                popupContent = `
+                    <div class="capsule-popup locked-capsule">
+                        <div class="locked-icon">🔒</div>
+                        <div class="capsule-header">${capsule.title}</div>
+                        <div class="capsule-meta">By ${capsule.author}</div>
+                        <p style="margin: 1rem 0;">This capsule is locked</p>
+                        <div class="countdown">${timeLeft}</div>
+                    </div>
+                `;
+            }
+            
+            marker.bindPopup(popupContent, {
+                maxWidth: 300,
+                className: 'custom-popup'
+            }).openPopup();
+        }
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                filterMarkers();
+            });
+        });
+
+        function filterMarkers() {
+            markers.forEach(marker => {
+                const isUnlocked = new Date() >= marker.capsuleData.unlockDate;
+                
+                if (currentFilter === 'all') {
+                    marker.addTo(map);
+                } else if (currentFilter === 'locked' && !isUnlocked) {
+                    marker.addTo(map);
+                } else if (currentFilter === 'unlocked' && isUnlocked) {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+        }
+
+        function updateStats() {
+            const total = capsules.length;
+            const unlocked = capsules.filter(c => new Date() >= c.unlockDate).length;
+            const locked = total - unlocked;
+            
+            document.getElementById('totalCapsules').textContent = total;
+            document.getElementById('lockedCapsules').textContent = locked;
+            document.getElementById('unlockedCapsules').textContent = unlocked;
+        }
+
+        function formatDate(date) {
+            return new Date(date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function getTimeUntilUnlock(unlockDate) {
+            const now = new Date();
+            const unlock = new Date(unlockDate);
+            const diff = unlock - now;
+            
+            if (diff <= 0) return 'Unlocked!';
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (days > 0) return `Unlocks in ${days}d ${hours}h`;
+            if (hours > 0) return `Unlocks in ${hours}h ${minutes}m`;
+            return `Unlocks in ${minutes}m`;
+        }
+
+        function showSuccess() {
+            const overlay = document.getElementById('overlay');
+            const message = document.getElementById('successMessage');
+            
+            overlay.classList.add('show');
+            message.classList.add('show');
+            
+            setTimeout(() => {
+                overlay.classList.remove('show');
+                message.classList.remove('show');
+            }, 2000);
+        }
+
+        // Storage functions
+        function saveCapsules() {
+            const data = {
+                capsules: capsules,
+                lastUpdated: new Date().toISOString()
+            };
+            // Store in memory for this session
+            window.capsulesData = data;
+        }
+
+        function loadCapsules() {
+            // Load from memory if exists
+            if (window.capsulesData && window.capsulesData.capsules) {
+                window.capsulesData.capsules.forEach(c => {
+                    c.unlockDate = new Date(c.unlockDate);
+                    c.createdAt = new Date(c.createdAt);
+                    capsules.push(c);
+                    addMarker(c);
+                });
+            }
+            updateStats();
+        }
+
+        // Auto-refresh markers every minute to update lock status
+        setInterval(() => {
+            markers.forEach(marker => {
+                const capsule = marker.capsuleData;
+                const isUnlocked = new Date() >= capsule.unlockDate;
+                
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="
+                        background: ${isUnlocked ? '#4caf50' : '#ff9800'};
+                        width: 30px;
+                        height: 30px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        font-size: 16px;
+                        border: 3px solid white;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    ">${isUnlocked ? '🔓' : '🔒'}</div>`,
+                    iconSize: [30, 30]
+                });
+                
+                marker.setIcon(icon);
+            });
+            updateStats();
+        }, 60000);
+
+        // Initialize
+        initMap();
+    </script>
+</body>
+</html>
