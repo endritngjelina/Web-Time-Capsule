@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Capsule Network | Digital Memory Preservation</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #007AFF;
+            --primary-dark: #0051D5;
+            --primary-light: #409CFF;
+            --secondary: #5856D6;
+            --success: #34C759;
+            --warning: #FF9500;
+            --danger: #FF3B30;
+            --bg-primary: #000000;
+            --bg-secondary: #1C1C1E;
+            --bg-tertiary: #2C2C2E;
+            --bg-card: rgba(28, 28, 30, 0.85);
+            --text-primary: #FFFFFF;
+            --text-secondary: #98989D;
+            --border: #38383A;
+            --shadow: rgba(0, 0, 0, 0.5);
+            --glow-primary: rgba(0, 122, 255, 0.3);
+            --glow-success: rgba(52, 199, 89, 0.3);
+            --glow-warning: rgba(255, 149, 0, 0.3);
+            --gradient-primary: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+            --gradient-secondary: linear-gradient(135deg, #34C759 0%, #00C7BE 100%);
+            --gradient-warning: linear-gradient(135deg, #FF9500 0%, #FF2D55 100%);
+            --gradient-bg: radial-gradient(circle at 10% 20%, rgba(0, 122, 255, 0.1) 0%, transparent 20%), 
+                           radial-gradient(circle at 90% 80%, rgba(88, 86, 214, 0.1) 0%, transparent 20%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-image: var(--gradient-bg);
+        }
+
+        #map {
+            height: 100vh;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+            filter: brightness(0.9) contrast(1.1);
+        }
+
+        .glass-panel {
+            background: rgba(28, 28, 30, 0.85);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 48px var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.08);
+        }
+
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 24px;
+            z-index: 1000;
+            max-width: 380px;
+            width: 100%;
+        }
+
+        .stats-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 24px;
+            z-index: 1000;
+            min-width: 240px;
+        }
+
+        .trends-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 20px;
+            z-index: 1000;
+            width: 320px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .capsule-feed {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 20px;
+            z-index: 1000;
+            width: 380px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .capsule-feed::-webkit-scrollbar,
+        .trends-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .capsule-feed::-webkit-scrollbar-track,
+        .trends-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .capsule-feed::-webkit-scrollbar-thumb,
+        .trends-panel::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--gradient-primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 700;
+            letter-spacing: -0.6px;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1.5px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        input:hover, textarea:hover, select:hover {
+            border-color: rgba(0, 122, 255, 0.5);
+            background: rgba(44, 44, 46, 0.8);
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--bg-tertiary);
+            box-shadow: 0 0 0 4px var(--glow-primary), inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+            letter-spacing: 0.3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .button:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .button-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 16px var(--glow-primary);
+        }
+
+        .button-primary:hover {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--glow-primary);
+        }
+
+        .button-primary:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .button-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            margin-top: 10px;
+            border: 1.5px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .button-secondary:hover {
+            background: var(--border);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .button-secondary:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(56, 56, 58, 0.5);
+            padding-bottom: 16px;
+        }
+
+        .tab {
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            flex: 1;
+            text-align: center;
+        }
+
+        .tab.active {
+            background: rgba(0, 122, 255, 0.2);
+            color: var(--primary);
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+        }
+
+        .filter-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(56, 56, 58, 0.5);
+            animation: slideIn 0.4s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .filter-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border-radius: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .filter-btn::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px var(--glow-primary);
+            transform: translateY(-2px);
+        }
+
+        .filter-btn.active::after {
+            transform: scaleX(1);
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .filter-btn.active:hover {
+            color: white;
+            box-shadow: 0 6px 16px var(--glow-primary);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(56, 56, 58, 0.5);
+            transition: padding 0.2s ease;
+        }
+
+        .stat-item:hover {
+            padding: 14px 8px;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 0 20px var(--glow-primary);
+            transition: transform 0.2s ease, text-shadow 0.2s ease;
+        }
+
+        .stat-item:hover .stat-value {
+            transform: scale(1.1);
+            text-shadow: 0 0 30px var(--glow-primary);
+        }
+
+        .trend-item, .feed-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(56, 56, 58, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .trend-item:hover, .feed-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 12px;
+            margin: 0 -12px;
+        }
+
+        .trend-item:last-child, .feed-item:last-child {
+            border-bottom: none;
+        }
+
+        .trend-icon, .feed-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .trend-content, .feed-content {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .trend-title, .feed-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .trend-info, .feed-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .countdown {
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(44, 44, 46, 0.5) 100%);
+            padding: 20px;
+            border-radius: 16px;
+            margin-top: 16px;
+            text-align: center;
+            border: 1.5px solid var(--border);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .countdown::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 122, 255, 0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .countdown-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+        }
+
+        .countdown-time {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            font-variant-numeric: tabular-nums;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 0 20px var(--glow-primary);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes fadeIn {
+            from { 
+                opacity: 0;
+                backdrop-filter: blur(0px);
+            }
+            to { 
+                opacity: 1;
+                backdrop-filter: blur(20px);
+            }
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, rgba(28, 28, 30, 0.98) 0%, rgba(44, 44, 46, 0.98) 100%);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border-radius: 24px;
+            padding: 36px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 80px var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(40px) scale(0.95);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .modal-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: var(--bg-tertiary);
+            border: 1.5px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 300;
+        }
+
+        .close-btn:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: white;
+            transform: rotate(90deg) scale(1.1);
+            box-shadow: 0 4px 16px rgba(255, 59, 48, 0.4);
+        }
+
+        .close-btn:active {
+            transform: rotate(90deg) scale(0.95);
+        }
+
+        .capsule-detail {
+            margin-bottom: 20px;
+        }
+
+        .capsule-detail-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .capsule-detail-value {
+            font-size: 16px;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .capsule-link {
+            color: var(--primary);
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .capsule-link:hover {
+            text-decoration: underline;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .status-badge:hover::before {
+            left: 100%;
+        }
+
+        .status-locked {
+            background: linear-gradient(135deg, rgba(255, 149, 0, 0.2) 0%, rgba(255, 149, 0, 0.1) 100%);
+            color: var(--warning);
+            border: 1.5px solid rgba(255, 149, 0, 0.3);
+            box-shadow: 0 4px 12px var(--glow-warning);
+        }
+
+        .status-unlocked {
+            background: linear-gradient(135deg, rgba(52, 199, 89, 0.2) 0%, rgba(52, 199, 89, 0.1) 100%);
+            color: var(--success);
+            border: 1.5px solid rgba(52, 199, 89, 0.3);
+            box-shadow: 0 4px 12px var(--glow-success);
+        }
+
+        .legend {
+            position: fixed;
+            bottom: 20px;
+            left: 420px;
+            background: rgba(28, 28, 30, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px var(--shadow);
+            z-index: 1000;
+            border: 1px solid var(--border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .icon-locked {
+            background: var(--warning);
+            box-shadow: 0 0 10px var(--warning);
+        }
+
+        .icon-unlocked {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px var(--shadow);
+            z-index: 3000;
+            display: none;
+            border: 1px solid var(--border);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-secondary);
+        }
+
+        .popup-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .popup-info {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .popup-btn {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        .popup-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .ai-suggestion {
+            background: rgba(88, 86, 214, 0.1);
+            border: 1px solid rgba(88, 86, 214, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .ai-suggestion-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+
+        .capsule-visualization {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .capsule-3d {
+            width: 120px;
+            height: 180px;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(15deg) rotateY(15deg);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: rotateX(15deg) rotateY(15deg) translateY(0); }
+            50% { transform: rotateX(15deg) rotateY(15deg) translateY(-10px); }
+        }
+
+        .capsule-top, .capsule-bottom {
+            position: absolute;
+            width: 120px;
+            height: 60px;
+            background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+            border-radius: 60px 60px 0 0;
+            left: 0;
+        }
+
+        .capsule-top {
+            top: 0;
+        }
+
+        .capsule-bottom {
+            bottom: 0;
+            border-radius: 0 0 60px 60px;
+        }
+
+        .capsule-middle {
+            position: absolute;
+            width: 120px;
+            height: 60px;
+            background: linear-gradient(135deg, #409CFF 0%, #7876F5 100%);
+            top: 60px;
+            left: 0;
+        }
+
+        .capsule-glow {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            background: radial-gradient(circle, rgba(0, 122, 255, 0.4) 0%, transparent 70%);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        .chart-container {
+            margin-top: 20px;
+            height: 200px;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .control-panel, .stats-panel, .trends-panel, .capsule-feed {
+                max-width: calc(100% - 40px);
+                left: 20px;
+                right: 20px;
+            }
+
+            .stats-panel, .trends-panel {
+                top: auto;
+                bottom: 80px;
+            }
+
+            .legend {
+                bottom: 20px;
+                left: 20px;
+                right: 20px;
+            }
+
+            .capsule-feed {
+                bottom: 340px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="control-panel glass-panel">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-time-capsule"></i>
+                </div>
+                <span>Time Capsule</span>
+            </div>
+            <div class="user-actions">
+                <button class="button button-secondary" style="width: auto; padding: 8px 16px;" onclick="app.toggleTheme()">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="app.switchTab('plant')">Plant</button>
+            <button class="tab" onclick="app.switchTab('discover')">Discover</button>
+            <button class="tab" onclick="app.switchTab('myCapsules')">My Capsules</button>
+        </div>
+
+        <div id="plant-tab" class="tab-content">
+            <h2>Plant Time Capsule</h2>
+            <div class="form-group">
+                <label>Type</label>
+                <select id="capsuleType">
+                    <option value="note">📝 Note</option>
+                    <option value="link">🔗 Link</option>
+                    <option value="message">💌 Personal Message</option>
+                    <option value="prediction">🔮 Prediction</option>
+                    <option value="memory">🧠 Memory</option>
+                    <option value="goal">🎯 Goal</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="capsuleTitle" placeholder="Give your capsule a title" maxlength="100">
+            </div>
+            <div class="form-group">
+                <label>Content</label>
+                <textarea id="capsuleContent" placeholder="Enter your note, link, or message..." maxlength="1000"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Unlock Date</label>
+                <input type="datetime-local" id="unlockDate">
+            </div>
+            <div class="form-group">
+                <label>Your Name</label>
+                <input type="text" id="authorName" placeholder="Anonymous" maxlength="50">
+            </div>
+            <button class="button button-primary" onclick="app.plantCapsule()">🌱 Plant Capsule</button>
+            <button class="button button-secondary" onclick="app.useCurrentLocation()">📍 Use My Location</button>
+
+            <div class="ai-suggestion">
+                <div class="ai-suggestion-title">
+                    <i class="fas fa-robot"></i>
+                    <span>AI Suggestion</span>
+                </div>
+                <div id="aiSuggestionText">Based on your location and time of year, consider writing about seasonal changes or local events happening now.</div>
+            </div>
+        </div>
+
+        <div id="discover-tab" class="tab-content" style="display: none;">
+            <h2>Discover Capsules</h2>
+            <div class="filter-section">
+                <div class="filter-title">Filter by Status</div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="app.filterCapsules('all')">All</button>
+                    <button class="filter-btn" onclick="app.filterCapsules('unlocked')">Unlocked</button>
+                    <button class="filter-btn" onclick="app.filterCapsules('locked')">Locked</button>
+                </div>
+                <div class="filter-title" style="margin-top: 12px;">Filter by Type</div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="app.filterByType('all')">All</button>
+                    <button class="filter-btn" onclick="app.filterByType('note')">Notes</button>
+                    <button class="filter-btn" onclick="app.filterByType('link')">Links</button>
+                    <button class="filter-btn" onclick="app.filterByType('message')">Messages</button>
+                    <button class="filter-btn" onclick="app.filterByType('prediction')">Predictions</button>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="capsuleChart"></canvas>
+            </div>
+        </div>
+
+        <div id="myCapsules-tab" class="tab-content" style="display: none;">
+            <h2>My Time Capsules</h2>
+            <div class="capsule-list" id="myCapsulesList">
+                <!-- My capsules will be listed here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-panel glass-panel">
+        <div class="stat-item">
+            <span class="stat-label">Total Capsules</span>
+            <span class="stat-value" id="totalCapsules">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Unlocked</span>
+            <span class="stat-value" id="unlockedCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Coming Soon</span>
+            <span class="stat-value" id="lockedCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">My Capsules</span>
+            <span class="stat-value" id="myCapsulesCount">0</span>
+        </div>
+    </div>
+
+    <div class="trends-panel glass-panel">
+        <h2>Trending Now</h2>
+        <div class="trend-item" onclick="app.viewTrendingCapsule(1)">
+            <div class="trend-icon" style="background: var(--gradient-primary);">
+                <i class="fas fa-globe-americas"></i>
+            </div>
+            <div class="trend-content">
+                <div class="trend-title">Global Time Capsule Day</div>
+                <div class="trend-info">127 new capsules planted today</div>
+            </div>
+        </div>
+        <div class="trend-item" onclick="app.viewTrendingCapsule(2)">
+            <div class="trend-icon" style="background: var(--gradient-warning);">
+                <i class="fas fa-bolt"></i>
+            </div>
+            <div class="trend-content">
+                <div class="trend-title">Tech Predictions for 2030</div>
+                <div class="trend-info">42 predictions unlocked this week</div>
+            </div>
+        </div>
+        <div class="trend-item" onclick="app.viewTrendingCapsule(3)">
+            <div class="trend-icon" style="background: var(--gradient-secondary);">
+                <i class="fas fa-heart"></i>
+            </div>
+            <div class="trend-content">
+                <div class="trend-title">Love Letters Through Time</div>
+                <div class="trend-info">89 romantic capsules discovered</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="capsule-feed glass-panel">
+        <h2>Recent Activity</h2>
+        <div class="feed-item" onclick="app.viewCapsuleFromFeed(1)">
+            <div class="feed-icon" style="background: rgba(52, 199, 89, 0.2); color: #34C759;">
+                <i class="fas fa-lock-open"></i>
+            </div>
+            <div class="feed-content">
+                <div class="feed-title">"Memories of 2020" unlocked</div>
+                <div class="feed-info">2 minutes ago • New York, NY</div>
+            </div>
+        </div>
+        <div class="feed-item" onclick="app.viewCapsuleFromFeed(2)">
+            <div class="feed-icon" style="background: rgba(0, 122, 255, 0.2); color: #007AFF;">
+                <i class="fas fa-seedling"></i>
+            </div>
+            <div class="feed-content">
+                <div class="feed-title">New capsule planted: "Future Goals"</div>
+                <div class="feed-info">15 minutes ago • San Francisco, CA</div>
+            </div>
+        </div>
+        <div class="feed-item" onclick="app.viewCapsuleFromFeed(3)">
+            <div class="feed-icon" style="background: rgba(255, 149, 0, 0.2); color: #FF9500;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="feed-content">
+                <div class="feed-title">"Tech in 2025" unlocks in 2 days</div>
+                <div class="feed-info">1 hour ago • London, UK</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-icon icon-unlocked"></div>
+            <span>Unlocked Capsule</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-icon icon-locked"></div>
+            <span>Locked Capsule</span>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <div class="modal" id="capsuleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle"></h3>
+                <button class="close-btn" onclick="app.closeModal()">&times;</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            map: null,
+            capsules: [],
+            markers: [],
+            selectedLocation: null,
+            currentFilter: 'all',
+            currentTypeFilter: 'all',
+            activeTab: 'plant',
+            chart: null,
+            isDarkMode: true,
+
+            init() {
+                this.map = L.map('map').setView([37.7749, -122.4194], 4);
+                
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                    subdomains: 'abcd',
+                    maxZoom: 19
+                }).addTo(this.map);
+
+                this.map.on('click', (e) => {
+                    this.selectedLocation = e.latlng;
+                    this.showNotification('Location selected! Fill in the details and plant your capsule.');
+                    this.generateAISuggestion();
+                });
+
+                this.setMinUnlockDate();
+                this.loadCapsules();
+                this.updateStats();
+                this.initChart();
+                
+                setInterval(() => this.checkUnlockDates(), 60000);
+                setInterval(() => this.updateLiveCountdowns(), 1000);
+                
+                // Add some visual effects to the map
+                this.addMapEffects();
+            },
+
+            addMapEffects() {
+                // Add a subtle pulsing effect to the map container
+                const mapElement = document.getElementById('map');
+                mapElement.style.animation = 'pulse 10s ease-in-out infinite';
+            },
+
+            setMinUnlockDate() {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset() + 1);
+                document.getElementById('unlockDate').min = now.toISOString().slice(0, 16);
+            },
+
+            switchTab(tabName) {
+                // Hide all tab contents
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.style.display = 'none';
+                });
+                
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                // Show selected tab content and activate tab
+                document.getElementById(`${tabName}-tab`).style.display = 'block';
+                event.target.classList.add('active');
+                
+                this.activeTab = tabName;
+                
+                if (tabName === 'discover') {
+                    this.updateChart();
+                } else if (tabName === 'myCapsules') {
+                    this.loadMyCapsules();
+                }
+            },
+
+            generateAISuggestion() {
+                const suggestions = [
+                    "Based on your location, consider writing about local landmarks or cultural events.",
+                    "This time of year is perfect for reflecting on seasonal changes and personal growth.",
+                    "Think about how technology might change this location in the future.",
+                    "Consider leaving a message for your future self about current world events.",
+                    "This spot might have historical significance - research and share what you find!",
+                    "What personal milestone are you approaching? Document it in this capsule.",
+                    "Leave a prediction about how society will evolve by your unlock date.",
+                    "Share a favorite memory or lesson learned that's connected to this place."
+                ];
+                
+                const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
+                document.getElementById('aiSuggestionText').textContent = randomSuggestion;
+            },
+
+            plantCapsule() {
+                if (!this.selectedLocation) {
+                    this.showNotification('Please click on the map to select a location first!');
+                    return;
+                }
+
+                const title = document.getElementById('capsuleTitle').value.trim();
+                const content = document.getElementById('capsuleContent').value.trim();
+                const unlockDate = document.getElementById('unlockDate').value;
+                const author = document.getElementById('authorName').value.trim() || 'Anonymous';
+                const type = document.getElementById('capsuleType').value;
+
+                if (!title || !content || !unlockDate) {
+                    this.showNotification('Please fill in all required fields!');
+                    return;
+                }
+
+                const unlockDateTime = new Date(unlockDate);
+                if (unlockDateTime <= new Date()) {
+                    this.showNotification('Unlock date must be in the future!');
+                    return;
+                }
+
+                const capsule = {
+                    id: Date.now(),
+                    title,
+                    content,
+                    type,
+                    unlockDate: unlockDateTime.toISOString(),
+                    author,
+                    lat: this.selectedLocation.lat,
+                    lng: this.selectedLocation.lng,
+                    plantedDate: new Date().toISOString(),
+                    isMine: true
+                };
+
+                this.capsules.push(capsule);
+                this.saveCapsules();
+                this.addMarker(capsule);
+                this.updateStats();
+                this.clearForm();
+                this.selectedLocation = null;
+                
+                // Show a special planted animation
+                this.showPlantingAnimation(capsule);
+            },
+
+            showPlantingAnimation(capsule) {
+                const notification = document.getElementById('notification');
+                notification.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="capsule-visualization" style="width: 40px; height: 60px;">
+                            <div class="capsule-3d" style="width: 40px; height: 60px;">
+                                <div class="capsule-top" style="width: 40px; height: 20px;"></div>
+                                <div class="capsule-middle" style="width: 40px; height: 20px; top: 20px;"></div>
+                                <div class="capsule-bottom" style="width: 40px; height: 20px;"></div>
+                                <div class="capsule-glow" style="width: 50px; height: 50px;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600;">🌱 Time Capsule Planted!</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">"${capsule.title}" is now preserving your memory</div>
+                        </div>
+                    </div>
+                `;
+                notification.style.display = 'block';
+                
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 5000);
+            },
+
+            addMarker(capsule) {
+                const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+                
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `
+                        <div style="
+                            width: 28px;
+                            height: 28px;
+                            background: ${isUnlocked ? '#34C759' : '#FF9500'};
+                            border-radius: 50%;
+                            border: 3px solid #fff;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 20px ${isUnlocked ? '#34C759' : '#FF9500'};
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 12px;
+                            color: white;
+                        ">
+                            ${this.getTypeEmoji(capsule.type)}
+                        </div>
+                    `,
+                    iconSize: [28, 28]
+                });
+
+                const marker = L.marker([capsule.lat, capsule.lng], { icon })
+                    .addTo(this.map);
+
+                marker.bindPopup(`
+                    <div style="min-width: 200px;">
+                        <div class="popup-title">${this.getTypeEmoji(capsule.type)} ${capsule.title}</div>
+                        <div class="popup-info">By ${capsule.author}</div>
+                        <div class="popup-info">Unlocks: ${new Date(capsule.unlockDate).toLocaleString()}</div>
+                        <button class="popup-btn" onclick="app.viewCapsule(${capsule.id})">
+                            ${isUnlocked ? 'Open Capsule' : 'View Details'}
+                        </button>
+                    </div>
+                `);
+
+                marker.capsuleId = capsule.id;
+                this.markers.push(marker);
+            },
+
+            getTypeEmoji(type) {
+                const emojis = {
+                    note: '📝',
+                    link: '🔗',
+                    message: '💌',
+                    prediction: '🔮',
+                    memory: '🧠',
+                    goal: '🎯'
+                };
+                return emojis[type] || '📦';
+            },
+
+            viewCapsule(id) {
+                const capsule = this.capsules.find(c => c.id === id);
+                if (!capsule) return;
+
+                const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+
+                document.getElementById('modalTitle').textContent = `${this.getTypeEmoji(capsule.type)} ${capsule.title}`;
+
+                let modalContent = `
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Status</div>
+                        <div class="capsule-detail-value">
+                            <span class="status-badge ${isUnlocked ? 'status-unlocked' : 'status-locked'}">
+                                ${isUnlocked ? '🔓 Unlocked' : '🔒 Locked'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Author</div>
+                        <div class="capsule-detail-value">${capsule.author}</div>
+                    </div>
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Type</div>
+                        <div class="capsule-detail-value">${capsule.type.charAt(0).toUpperCase() + capsule.type.slice(1)}</div>
+                    </div>
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Planted</div>
+                        <div class="capsule-detail-value">${new Date(capsule.plantedDate).toLocaleString()}</div>
+                    </div>
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Unlock Date</div>
+                        <div class="capsule-detail-value">${new Date(capsule.unlockDate).toLocaleString()}</div>
+                    </div>
+                `;
+
+                if (!isUnlocked) {
+                    const timeLeft = this.getTimeRemaining(capsule.unlockDate);
+                    modalContent += `
+                        <div class="countdown">
+                            <div class="countdown-label">Time Remaining</div>
+                            <div class="countdown-time" id="countdown-${capsule.id}">${timeLeft}</div>
+                        </div>
+                    `;
+                } else {
+                    modalContent += `
+                        <div class="capsule-detail">
+                            <div class="capsule-detail-label">Content</div>
+                            <div class="capsule-detail-value">
+                                ${capsule.type === 'link' 
+                                    ? `<a href="${capsule.content}" target="_blank" class="capsule-link">${capsule.content}</a>`
+                                    : capsule.content
+                                }
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add a celebration effect for unlocked capsules
+                    if (isUnlocked) {
+                        modalContent += `
+                            <div class="capsule-visualization">
+                                <div class="capsule-3d">
+                                    <div class="capsule-top"></div>
+                                    <div class="capsule-middle"></div>
+                                    <div class="capsule-bottom"></div>
+                                    <div class="capsule-glow"></div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                // Add action buttons
+                if (capsule.isMine) {
+                    modalContent += `
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button class="button button-secondary" style="flex: 1;" onclick="app.editCapsule(${capsule.id})">Edit</button>
+                            <button class="button button-secondary" style="flex: 1; background: rgba(255, 59, 48, 0.1); color: #FF3B30; border-color: #FF3B30;" onclick="app.deleteCapsule(${capsule.id})">Delete</button>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('modalBody').innerHTML = modalContent;
+                document.getElementById('capsuleModal').style.display = 'flex';
+            },
+
+            getTimeRemaining(unlockDate) {
+                const now = new Date();
+                const target = new Date(unlockDate);
+                const diff = target - now;
+
+                if (diff <= 0) return 'Unlocked!';
+
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+                if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+                return `${minutes}m ${seconds}s`;
+            },
+
+            updateLiveCountdowns() {
+                this.capsules.forEach(capsule => {
+                    const countdownElement = document.getElementById(`countdown-${capsule.id}`);
+                    if (countdownElement) {
+                        countdownElement.textContent = this.getTimeRemaining(capsule.unlockDate);
+                    }
+                });
+            },
+
+            closeModal() {
+                document.getElementById('capsuleModal').style.display = 'none';
+            },
+
+            filterCapsules(filter) {
+                this.currentFilter = filter;
+                document.querySelectorAll('.filter-buttons')[0].querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+                this.applyFilters();
+            },
+
+            filterByType(type) {
+                this.currentTypeFilter = type;
+                document.querySelectorAll('.filter-buttons')[1].querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+                this.applyFilters();
+            },
+
+            applyFilters() {
+                this.markers.forEach(marker => {
+                    const capsule = this.capsules.find(c => c.id === marker.capsuleId);
+                    if (!capsule) return;
+
+                    const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+                    let show = true;
+
+                    if (this.currentFilter === 'unlocked' && !isUnlocked) show = false;
+                    if (this.currentFilter === 'locked' && isUnlocked) show = false;
+                    if (this.currentTypeFilter !== 'all' && capsule.type !== this.currentTypeFilter) show = false;
+
+                    if (show) {
+                        marker.addTo(this.map);
+                    } else {
+                        marker.remove();
+                    }
+                });
+            },
+
+            checkUnlockDates() {
+                let updated = false;
+                this.capsules.forEach(capsule => {
+                    if (new Date(capsule.unlockDate) <= new Date()) {
+                        updated = true;
+                    }
+                });
+
+                if (updated) {
+                    this.refreshMarkers();
+                    this.updateStats();
+                    this.updateChart();
+                }
+            },
+
+            refreshMarkers() {
+                this.markers.forEach(m => m.remove());
+                this.markers = [];
+                this.capsules.forEach(capsule => this.addMarker(capsule));
+                this.applyFilters();
+            },
+
+            useCurrentLocation() {
+                if ('geolocation' in navigator) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            this.selectedLocation = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            };
+                            this.map.setView([this.selectedLocation.lat, this.selectedLocation.lng], 13);
+                            this.showNotification('📍 Location set to your current position!');
+                            this.generateAISuggestion();
+                        },
+                        (error) => {
+                            this.showNotification('Unable to get your location. Please click on the map instead.');
+                        }
+                    );
+                } else {
+                    this.showNotification('Geolocation is not supported. Please click on the map to select a location.');
+                }
+            },
+
+            updateStats() {
+                const total = this.capsules.length;
+                const unlocked = this.capsules.filter(c => new Date(c.unlockDate) <= new Date()).length;
+                const locked = total - unlocked;
+                const myCapsules = this.capsules.filter(c => c.isMine).length;
+
+                document.getElementById('totalCapsules').textContent = total;
+                document.getElementById('unlockedCount').textContent = unlocked;
+                document.getElementById('lockedCount').textContent = locked;
+                document.getElementById('myCapsulesCount').textContent = myCapsules;
+            },
+
+            initChart() {
+                const ctx = document.getElementById('capsuleChart').getContext('2d');
+                this.chart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Notes', 'Links', 'Messages', 'Predictions', 'Memories', 'Goals'],
+                        datasets: [{
+                            data: [12, 5, 8, 3, 7, 4],
+                            backgroundColor: [
+                                '#007AFF',
+                                '#34C759',
+                                '#FF9500',
+                                '#5856D6',
+                                '#FF2D55',
+                                '#AF52DE'
+                            ],
+                            borderWidth: 0,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#98989D',
+                                    font: {
+                                        size: 11
+                                    },
+                                    padding: 15
+                                }
+                            }
+                        },
+                        cutout: '70%'
+                    }
+                });
+            },
+
+            updateChart() {
+                if (!this.chart) return;
+                
+                const typeCounts = {
+                    note: 0,
+                    link: 0,
+                    message: 0,
+                    prediction: 0,
+                    memory: 0,
+                    goal: 0
+                };
+                
+                this.capsules.forEach(capsule => {
+                    typeCounts[capsule.type] = (typeCounts[capsule.type] || 0) + 1;
+                });
+                
+                this.chart.data.datasets[0].data = [
+                    typeCounts.note,
+                    typeCounts.link,
+                    typeCounts.message,
+                    typeCounts.prediction,
+                    typeCounts.memory,
+                    typeCounts.goal
+                ];
+                
+                this.chart.update();
+            },
+
+            loadMyCapsules() {
+                const myCapsulesList = document.getElementById('myCapsulesList');
+                const myCapsules = this.capsules.filter(c => c.isMine);
+                
+                if (myCapsules.length === 0) {
+                    myCapsulesList.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                            <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                            <div>You haven't planted any capsules yet</div>
+                            <button class="button button-primary" style="margin-top: 16px;" onclick="app.switchTab('plant')">Plant Your First Capsule</button>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                myCapsules.forEach(capsule => {
+                    const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+                    html += `
+                        <div class="feed-item" onclick="app.viewCapsule(${capsule.id})">
+                            <div class="feed-icon" style="background: ${isUnlocked ? 'rgba(52, 199, 89, 0.2)' : 'rgba(255, 149, 0, 0.2)'}; color: ${isUnlocked ? '#34C759' : '#FF9500'};">
+                                <i class="fas ${isUnlocked ? 'fa-lock-open' : 'fa-lock'}"></i>
+                            </div>
+                            <div class="feed-content">
+                                <div class="feed-title">${capsule.title}</div>
+                                <div class="feed-info">${isUnlocked ? 'Unlocked' : 'Unlocks'} • ${new Date(capsule.unlockDate).toLocaleDateString()}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                myCapsulesList.innerHTML = html;
+            },
+
+            editCapsule(id) {
+                // In a real app, this would open an edit form
+                this.showNotification('Edit feature coming soon!');
+            },
+
+            deleteCapsule(id) {
+                if (confirm('Are you sure you want to delete this time capsule? This action cannot be undone.')) {
+                    this.capsules = this.capsules.filter(c => c.id !== id);
+                    this.saveCapsules();
+                    
+                    const markerIndex = this.markers.findIndex(m => m.capsuleId === id);
+                    if (markerIndex !== -1) {
+                        this.markers[markerIndex].remove();
+                        this.markers.splice(markerIndex, 1);
+                    }
+                    
+                    this.updateStats();
+                    this.updateChart();
+                    this.closeModal();
+                    this.showNotification('Time capsule deleted successfully');
+                }
+            },
+
+            viewTrendingCapsule(id) {
+                // In a real app, this would show trending capsules
+                this.showNotification('Exploring trending capsules...');
+            },
+
+            viewCapsuleFromFeed(id) {
+                // In a real app, this would show the actual capsule
+                this.showNotification('Opening capsule from feed...');
+            },
+
+            toggleTheme() {
+                this.isDarkMode = !this.isDarkMode;
+                
+                if (this.isDarkMode) {
+                    document.documentElement.style.setProperty('--bg-primary', '#000000');
+                    document.documentElement.style.setProperty('--bg-secondary', '#1C1C1E');
+                    document.documentElement.style.setProperty('--bg-tertiary', '#2C2C2E');
+                    document.documentElement.style.setProperty('--text-primary', '#FFFFFF');
+                    document.documentElement.style.setProperty('--text-secondary', '#98989D');
+                    event.target.innerHTML = '<i class="fas fa-moon"></i>';
+                } else {
+                    document.documentElement.style.setProperty('--bg-primary', '#FFFFFF');
+                    document.documentElement.style.setProperty('--bg-secondary', '#F2F2F7');
+                    document.documentElement.style.setProperty('--bg-tertiary', '#E5E5EA');
+                    document.documentElement.style.setProperty('--text-primary', '#000000');
+                    document.documentElement.style.setProperty('--text-secondary', '#8E8E93');
+                    event.target.innerHTML = '<i class="fas fa-sun"></i>';
+                }
+            },
+
+            showNotification(message) {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.style.display = 'block';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 3000);
+            },
+
+            clearForm() {
+                document.getElementById('capsuleTitle').value = '';
+                document.getElementById('capsuleContent').value = '';
+                document.getElementById('unlockDate').value = '';
+                document.getElementById('authorName').value = '';
+                document.getElementById('capsuleType').value = 'note';
+            },
+
+            saveCapsules() {
+                const capsuleData = {
+                    capsules: this.capsules,
+                    version: '2.0'
+                };
+                localStorage.setItem('timeCapsules', JSON.stringify(capsuleData));
+            },
+
+            loadCapsules() {
+                try {
+                    const data = JSON.parse(localStorage.getItem('timeCapsules'));
+                    if (data && data.capsules) {
+                        this.capsules = data.capsules;
+                        this.capsules.forEach(capsule => this.addMarker(capsule));
+                        this.applyFilters();
+                    } else {
+                        this.addDemoCapsules();
+                    }
+                } catch (e) {
+                    console.error('Error loading capsules:', e);
+                    this.addDemoCapsules();
+                }
+            },
+
+            addDemoCapsules() {
+                const now = new Date();
+                const demos = [
+                    {
+                        id: Date.now() + 1,
+                        title: 'Welcome to Time Capsules!',
+                        content: 'This is a demo capsule to show you how the app works. Click on markers to view capsules, and click anywhere on the map to plant your own!',
+                        type: 'note',
+                        unlockDate: new Date(now.getTime() - 86400000).toISOString(),
+                        author: 'System',
+                        lat: 37.7749,
+                        lng: -122.4194,
+                        plantedDate: new Date(now.getTime() - 172800000).toISOString(),
+                        isMine: false
+                    },
+                    {
+                        id: Date.now() + 2,
+                        title: 'Future Message',
+                        content: 'This capsule is locked until the future. When the unlock date arrives, you\'ll be able to see its contents!',
+                        type: 'message',
+                        unlockDate: new Date(now.getTime() + 3600000).toISOString(),
+                        author: 'Time Traveler',
+                        lat: 40.7128,
+                        lng: -74.0060,
+                        plantedDate: now.toISOString(),
+                        isMine: false
+                    },
+                    {
+                        id: Date.now() + 3,
+                        title: 'Tech Prediction 2025',
+                        content: 'I predict that by this date, AI will have transformed how we interact with technology in ways we can barely imagine today.',
+                        type: 'prediction',
+                        unlockDate: new Date(now.getTime() + 7200000).toISOString(),
+                        author: 'Futurist',
+                        lat: 34.0522,
+                        lng: -118.2437,
+                        plantedDate: now.toISOString(),
+                        isMine: false
+                    },
+                    {
+                        id: Date.now() + 4,
+                        title: 'My Personal Goals',
+                        content: 'By the time this unlocks, I hope to have achieved my career goals and traveled to at least 5 new countries.',
+                        type: 'goal',
+                        unlockDate: new Date(now.getTime() + 2592000000).toISOString(), // 30 days from now
+                        author: 'Dreamer',
+                        lat: 51.5074,
+                        lng: -0.1278,
+                        plantedDate: now.toISOString(),
+                        isMine: false
+                    }
+                ];
+
+                demos.forEach(demo => {
+                    this.capsules.push(demo);
+                    this.addMarker(demo);
+                });
+                this.saveCapsules();
+                this.updateStats();
+                this.updateChart();
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('capsuleModal');
+            if (e.target === modal) {
+                app.closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
