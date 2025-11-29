@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Capsule Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #007AFF;
+            --primary-dark: #0051D5;
+            --secondary: #5856D6;
+            --success: #34C759;
+            --warning: #FF9500;
+            --danger: #FF3B30;
+            --bg-primary: #000000;
+            --bg-secondary: #1C1C1E;
+            --bg-tertiary: #2C2C2E;
+            --text-primary: #FFFFFF;
+            --text-secondary: #98989D;
+            --border: #38383A;
+            --shadow: rgba(0, 0, 0, 0.5);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(28, 28, 30, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px var(--shadow);
+            z-index: 1000;
+            max-width: 320px;
+            border: 1px solid var(--border);
+        }
+
+        .stats-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(28, 28, 30, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px var(--shadow);
+            z-index: 1000;
+            min-width: 200px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            letter-spacing: 0.3px;
+        }
+
+        .button-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .button-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+        }
+
+        .button-primary:active {
+            transform: translateY(0);
+        }
+
+        .button-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            margin-top: 8px;
+        }
+
+        .button-secondary:hover {
+            background: var(--border);
+        }
+
+        .filter-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .filter-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .filter-btn.active:hover {
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px var(--shadow);
+            border: 1px solid var(--border);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: var(--bg-tertiary);
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .capsule-detail {
+            margin-bottom: 20px;
+        }
+
+        .capsule-detail-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .capsule-detail-value {
+            font-size: 16px;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .capsule-link {
+            color: var(--primary);
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .capsule-link:hover {
+            text-decoration: underline;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-locked {
+            background: rgba(255, 149, 0, 0.15);
+            color: var(--warning);
+        }
+
+        .status-unlocked {
+            background: rgba(52, 199, 89, 0.15);
+            color: var(--success);
+        }
+
+        .countdown {
+            background: var(--bg-tertiary);
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        .countdown-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .countdown-time {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .legend {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(28, 28, 30, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px var(--shadow);
+            z-index: 1000;
+            border: 1px solid var(--border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .icon-locked {
+            background: var(--warning);
+            box-shadow: 0 0 10px var(--warning);
+        }
+
+        .icon-unlocked {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px var(--shadow);
+            z-index: 3000;
+            display: none;
+            border: 1px solid var(--border);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-secondary);
+        }
+
+        .popup-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .popup-info {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .popup-btn {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        .popup-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        @media (max-width: 768px) {
+            .control-panel, .stats-panel {
+                max-width: calc(100% - 40px);
+                left: 20px;
+                right: 20px;
+            }
+
+            .stats-panel {
+                top: auto;
+                bottom: 80px;
+            }
+
+            .legend {
+                bottom: 20px;
+                left: 20px;
+                right: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="control-panel">
+        <h2>Plant Time Capsule</h2>
+        <div class="form-group">
+            <label>Type</label>
+            <select id="capsuleType">
+                <option value="note">Note</option>
+                <option value="link">Link</option>
+                <option value="message">Personal Message</option>
+                <option value="prediction">Prediction</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="capsuleTitle" placeholder="Give your capsule a title" maxlength="100">
+        </div>
+        <div class="form-group">
+            <label>Content</label>
+            <textarea id="capsuleContent" placeholder="Enter your note, link, or message..." maxlength="1000"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Unlock Date</label>
+            <input type="datetime-local" id="unlockDate">
+        </div>
+        <div class="form-group">
+            <label>Your Name (Optional)</label>
+            <input type="text" id="authorName" placeholder="Anonymous" maxlength="50">
+        </div>
+        <button class="button button-primary" onclick="app.plantCapsule()">🌱 Plant Capsule</button>
+        <button class="button button-secondary" onclick="app.useCurrentLocation()">📍 Use My Location</button>
+
+        <div class="filter-section">
+            <div class="filter-title">Filter Capsules</div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="app.filterCapsules('all')">All</button>
+                <button class="filter-btn" onclick="app.filterCapsules('unlocked')">Unlocked</button>
+                <button class="filter-btn" onclick="app.filterCapsules('locked')">Locked</button>
+            </div>
+            <div class="filter-title" style="margin-top: 12px;">By Type</div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="app.filterByType('all')">All</button>
+                <button class="filter-btn" onclick="app.filterByType('note')">Notes</button>
+                <button class="filter-btn" onclick="app.filterByType('link')">Links</button>
+                <button class="filter-btn" onclick="app.filterByType('message')">Messages</button>
+                <button class="filter-btn" onclick="app.filterByType('prediction')">Predictions</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-panel">
+        <div class="stat-item">
+            <span class="stat-label">Total Capsules</span>
+            <span class="stat-value" id="totalCapsules">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Unlocked</span>
+            <span class="stat-value" id="unlockedCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Coming Soon</span>
+            <span class="stat-value" id="lockedCount">0</span>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-icon icon-unlocked"></div>
+            <span>Unlocked Capsule</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-icon icon-locked"></div>
+            <span>Locked Capsule</span>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <div class="modal" id="capsuleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle"></h3>
+                <button class="close-btn" onclick="app.closeModal()">&times;</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            map: null,
+            capsules: [],
+            markers: [],
+            selectedLocation: null,
+            currentFilter: 'all',
+            currentTypeFilter: 'all',
+
+            init() {
+                this.map = L.map('map').setView([37.7749, -122.4194], 4);
+                
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                    subdomains: 'abcd',
+                    maxZoom: 19
+                }).addTo(this.map);
+
+                this.map.on('click', (e) => {
+                    this.selectedLocation = e.latlng;
+                    this.showNotification('Location selected! Fill in the details and plant your capsule.');
+                });
+
+                this.setMinUnlockDate();
+                this.loadCapsules();
+                this.updateStats();
+                
+                setInterval(() => this.checkUnlockDates(), 60000);
+            },
+
+            setMinUnlockDate() {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset() + 1);
+                document.getElementById('unlockDate').min = now.toISOString().slice(0, 16);
+            },
+
+            plantCapsule() {
+                if (!this.selectedLocation) {
+                    this.showNotification('Please click on the map to select a location first!');
+                    return;
+                }
+
+                const title = document.getElementById('capsuleTitle').value.trim();
+                const content = document.getElementById('capsuleContent').value.trim();
+                const unlockDate = document.getElementById('unlockDate').value;
+                const author = document.getElementById('authorName').value.trim() || 'Anonymous';
+                const type = document.getElementById('capsuleType').value;
+
+                if (!title || !content || !unlockDate) {
+                    this.showNotification('Please fill in all required fields!');
+                    return;
+                }
+
+                const unlockDateTime = new Date(unlockDate);
+                if (unlockDateTime <= new Date()) {
+                    this.showNotification('Unlock date must be in the future!');
+                    return;
+                }
+
+                const capsule = {
+                    id: Date.now(),
+                    title,
+                    content,
+                    type,
+                    unlockDate: unlockDateTime.toISOString(),
+                    author,
+                    lat: this.selectedLocation.lat,
+                    lng: this.selectedLocation.lng,
+                    plantedDate: new Date().toISOString()
+                };
+
+                this.capsules.push(capsule);
+                this.saveCapsules();
+                this.addMarker(capsule);
+                this.updateStats();
+                this.clearForm();
+                this.selectedLocation = null;
+                this.showNotification('🌱 Time capsule planted successfully!');
+            },
+
+            addMarker(capsule) {
+                const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+                
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="
+                        width: 24px;
+                        height: 24px;
+                        background: ${isUnlocked ? '#34C759' : '#FF9500'};
+                        border-radius: 50%;
+                        border: 3px solid #fff;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 20px ${isUnlocked ? '#34C759' : '#FF9500'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                    "></div>`,
+                    iconSize: [24, 24]
+                });
+
+                const marker = L.marker([capsule.lat, capsule.lng], { icon })
+                    .addTo(this.map);
+
+                const typeEmojis = {
+                    note: '📝',
+                    link: '🔗',
+                    message: '💌',
+                    prediction: '🔮'
+                };
+
+                marker.bindPopup(`
+                    <div style="min-width: 200px;">
+                        <div class="popup-title">${typeEmojis[capsule.type]} ${capsule.title}</div>
+                        <div class="popup-info">By ${capsule.author}</div>
+                        <div class="popup-info">Unlocks: ${new Date(capsule.unlockDate).toLocaleString()}</div>
+                        <button class="popup-btn" onclick="app.viewCapsule(${capsule.id})">
+                            ${isUnlocked ? 'Open Capsule' : 'View Details'}
+                        </button>
+                    </div>
+                `);
+
+                marker.capsuleId = capsule.id;
+                this.markers.push(marker);
+            },
+
+            viewCapsule(id) {
+                const capsule = this.capsules.find(c => c.id === id);
+                if (!capsule) return;
+
+                const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+                const typeEmojis = {
+                    note: '📝',
+                    link: '🔗',
+                    message: '💌',
+                    prediction: '🔮'
+                };
+
+                document.getElementById('modalTitle').textContent = `${typeEmojis[capsule.type]} ${capsule.title}`;
+
+                let modalContent = `
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Status</div>
+                        <div class="capsule-detail-value">
+                            <span class="status-badge ${isUnlocked ? 'status-unlocked' : 'status-locked'}">
+                                ${isUnlocked ? '🔓 Unlocked' : '🔒 Locked'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Author</div>
+                        <div class="capsule-detail-value">${capsule.author}</div>
+                    </div>
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Type</div>
+                        <div class="capsule-detail-value">${capsule.type.charAt(0).toUpperCase() + capsule.type.slice(1)}</div>
+                    </div>
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Planted</div>
+                        <div class="capsule-detail-value">${new Date(capsule.plantedDate).toLocaleString()}</div>
+                    </div>
+                    <div class="capsule-detail">
+                        <div class="capsule-detail-label">Unlock Date</div>
+                        <div class="capsule-detail-value">${new Date(capsule.unlockDate).toLocaleString()}</div>
+                    </div>
+                `;
+
+                if (!isUnlocked) {
+                    const timeLeft = this.getTimeRemaining(capsule.unlockDate);
+                    modalContent += `
+                        <div class="countdown">
+                            <div class="countdown-label">Time Remaining</div>
+                            <div class="countdown-time">${timeLeft}</div>
+                        </div>
+                    `;
+                } else {
+                    modalContent += `
+                        <div class="capsule-detail">
+                            <div class="capsule-detail-label">Content</div>
+                            <div class="capsule-detail-value">
+                                ${capsule.type === 'link' 
+                                    ? `<a href="${capsule.content}" target="_blank" class="capsule-link">${capsule.content}</a>`
+                                    : capsule.content
+                                }
+                            </div>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('modalBody').innerHTML = modalContent;
+                document.getElementById('capsuleModal').style.display = 'flex';
+            },
+
+            getTimeRemaining(unlockDate) {
+                const now = new Date();
+                const target = new Date(unlockDate);
+                const diff = target - now;
+
+                if (diff <= 0) return 'Unlocked!';
+
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+                if (days > 0) return `${days}d ${hours}h`;
+                if (hours > 0) return `${hours}h ${minutes}m`;
+                return `${minutes}m`;
+            },
+
+            closeModal() {
+                document.getElementById('capsuleModal').style.display = 'none';
+            },
+
+            filterCapsules(filter) {
+                this.currentFilter = filter;
+                document.querySelectorAll('.filter-buttons')[0].querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+                this.applyFilters();
+            },
+
+            filterByType(type) {
+                this.currentTypeFilter = type;
+                document.querySelectorAll('.filter-buttons')[1].querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+                this.applyFilters();
+            },
+
+            applyFilters() {
+                this.markers.forEach(marker => {
+                    const capsule = this.capsules.find(c => c.id === marker.capsuleId);
+                    if (!capsule) return;
+
+                    const isUnlocked = new Date(capsule.unlockDate) <= new Date();
+                    let show = true;
+
+                    if (this.currentFilter === 'unlocked' && !isUnlocked) show = false;
+                    if (this.currentFilter === 'locked' && isUnlocked) show = false;
+                    if (this.currentTypeFilter !== 'all' && capsule.type !== this.currentTypeFilter) show = false;
+
+                    if (show) {
+                        marker.addTo(this.map);
+                    } else {
+                        marker.remove();
+                    }
+                });
+            },
+
+            checkUnlockDates() {
+                let updated = false;
+                this.capsules.forEach(capsule => {
+                    if (new Date(capsule.unlockDate) <= new Date()) {
+                        updated = true;
+                    }
+                });
+
+                if (updated) {
+                    this.refreshMarkers();
+                    this.updateStats();
+                }
+            },
+
+            refreshMarkers() {
+                this.markers.forEach(m => m.remove());
+                this.markers = [];
+                this.capsules.forEach(capsule => this.addMarker(capsule));
+                this.applyFilters();
+            },
+
+            useCurrentLocation() {
+                if ('geolocation' in navigator) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            this.selectedLocation = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            };
+                            this.map.setView([this.selectedLocation.lat, this.selectedLocation.lng], 13);
+                            this.showNotification('📍 Location set to your current position!');
+                        },
+                        (error) => {
+                            this.showNotification('Unable to get your location. Please click on the map instead.');
+                        }
+                    );
+                } else {
+                    this.showNotification('Geolocation is not supported. Please click on the map to select a location.');
+                }
+            },
+
+            updateStats() {
+                const total = this.capsules.length;
+                const unlocked = this.capsules.filter(c => new Date(c.unlockDate) <= new Date()).length;
+                const locked = total - unlocked;
+
+                document.getElementById('totalCapsules').textContent = total;
+                document.getElementById('unlockedCount').textContent = unlocked;
+                document.getElementById('lockedCount').textContent = locked;
+            },
+
+            showNotification(message) {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.style.display = 'block';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 3000);
+            },
+
+            clearForm() {
+                document.getElementById('capsuleTitle').value = '';
+                document.getElementById('capsuleContent').value = '';
+                document.getElementById('unlockDate').value = '';
+                document.getElementById('authorName').value = '';
+                document.getElementById('capsuleType').value = 'note';
+            },
+
+            saveCapsules() {
+                const capsuleData = {
+                    capsules: this.capsules,
+                    version: '1.0'
+                };
+                const encoded = btoa(JSON.stringify(capsuleData));
+                document.cookie = `timeCapsules=${encoded}; max-age=31536000; path=/`;
+            },
+
+            loadCapsules() {
+                const cookies = document.cookie.split(';');
+                const capsuleCookie = cookies.find(c => c.trim().startsWith('timeCapsules='));
+                
+                if (capsuleCookie) {
+                    try {
+                        const encoded = capsuleCookie.split('=')[1];
+                        const data = JSON.parse(atob(encoded));
+                        this.capsules = data.capsules || [];
+                        this.capsules.forEach(capsule => this.addMarker(capsule));
+                        this.applyFilters();
+                    } catch (e) {
+                        console.error('Error loading capsules:', e);
+                        this.capsules = [];
+                    }
+                } else {
+                    this.addDemoCapsules();
+                }
+            },
+
+            addDemoCapsules() {
+                const now = new Date();
+                const demos = [
+                    {
+                        id: Date.now() + 1,
+                        title: 'Welcome to Time Capsules!',
+                        content: 'This is a demo capsule to show you how the app works. Click on markers to view capsules, and click anywhere on the map to plant your own!',
+                        type: 'note',
+                        unlockDate: new Date(now.getTime() - 86400000).toISOString(),
+                        author: 'System',
+                        lat: 37.7749,
+                        lng: -122.4194,
+                        plantedDate: new Date(now.getTime() - 172800000).toISOString()
+                    },
+                    {
+                        id: Date.now() + 2,
+                        title: 'Future Message',
+                        content: 'This capsule is locked until the future. When the unlock date arrives, you\'ll be able to see its contents!',
+                        type: 'message',
+                        unlockDate: new Date(now.getTime() + 3600000).toISOString(),
+                        author: 'Time Traveler',
+                        lat: 40.7128,
+                        lng: -74.0060,
+                        plantedDate: now.toISOString()
+                    },
+                    {
+                        id: Date.now() + 3,
+                        title: 'Tech Prediction 2025',
+                        content: 'I predict that by this date, AI will have transformed how we interact with technology in ways we can barely imagine today.',
+                        type: 'prediction',
+                        unlockDate: new Date(now.getTime() + 7200000).toISOString(),
+                        author: 'Futurist',
+                        lat: 34.0522,
+                        lng: -118.2437,
+                        plantedDate: now.toISOString()
+                    }
+                ];
+
+                demos.forEach(demo => {
+                    this.capsules.push(demo);
+                    this.addMarker(demo);
+                });
+                this.saveCapsules();
+                this.updateStats();
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('capsuleModal');
+            if (e.target === modal) {
+                app.closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
